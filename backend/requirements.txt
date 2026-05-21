@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-multipart
+pillow
+requests
+passlib
+bcrypt
+python-jose
+psycopg2-binary

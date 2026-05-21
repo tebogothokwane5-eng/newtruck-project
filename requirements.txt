@@ -1,0 +1,1 @@
+requirements = python3==3.10.11,kivy==2.3.1,kivymd==1.2.0,requests==2.32.5,plyer,pillow,pyjnius==1.4.2,cython==0.29.33

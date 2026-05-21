@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+venv310/
+render_env/
+
+# Buildozer / Android
+.buildozer/
+bin/
+
+# Logs
+*.log
+
+# Env
+.env
+
+# Uploads (optional)
+uploads/
+backend/uploads/
