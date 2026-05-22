@@ -13,10 +13,19 @@ bin/
 
 # Logs
 *.log
+log.txt
+build_log.txt
 
-# Env
+# Temp / media
+temp_slips/
+*.jpg
+*.jpeg
+*.png
+
+# Secrets / sessions
 .env
+user_session.json
 
-# Uploads (optional)
-uploads/
-backend/uploads/
+# IDE
+.vscode/
+.idea/
