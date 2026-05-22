@@ -1,33 +1,39 @@
 # Python
 __pycache__/
-*.pyc
+*.py[codz]
+*$py.class
 
 # Virtual environments
 venv/
 venv310/
 render_env/
 
-# Buildozer / Android
-.buildozer/
+# Build / packaging
+build/
+dist/
+develop-eggs/
+.eggs/
+lib/
+lib64/
 bin/
+.buildozer/
 
 # Logs
 *.log
 log.txt
 build_log.txt
 
-# Temp / media
-temp_slips/
-*.jpg
-*.jpeg
-*.png
-
-# Secrets / sessions
+# Env
 .env
+
+# Runtime
+temp_slips/
 user_session.json
 
-# IDE
-.vscode/
-.idea/
-# backend uploads (CRITICAL)
+# Uploads (CRITICAL - NEVER TRACK)
+uploads/
 backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
