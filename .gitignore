@@ -31,8 +31,11 @@ temp_slips/
 user_session.json
 
 # Uploads (CRITICAL - NEVER TRACK)
-uploads/
 backend/uploads/
+uploads/
+*.glb
+*.pdf
+*.jpg
 
 # OS
 .DS_Store
