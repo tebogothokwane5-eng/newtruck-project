@@ -29,3 +29,5 @@ user_session.json
 # IDE
 .vscode/
 .idea/
+# backend uploads (CRITICAL)
+backend/uploads/
