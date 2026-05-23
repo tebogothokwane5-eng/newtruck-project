@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+gunicorn 
 sqlalchemy
 pydantic
 python-multipart
@@ -9,3 +10,4 @@ passlib
 bcrypt
 python-jose
 psycopg2-binary
+

@@ -13,7 +13,7 @@ from backend.models.user import Job, JobStatus, JobApplication, User, DeliverySl
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
 # ----------------- CONFIG -----------------
-BASE_URL =  "https://yourapp.onrender.com"
+BASE_URL = "https://newtruck-project.onrender.com"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

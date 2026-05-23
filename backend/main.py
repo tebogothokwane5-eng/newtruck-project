@@ -17,7 +17,15 @@ Base.metadata.create_all(bind=engine)
 # ---------------- UPLOADS (TEMP FIX) ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+#UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+
+import os
+
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/tmp/uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+
 TRUCK_PACKS_DIR = os.path.join(UPLOAD_DIR, "truck_packs")
 SLIPS_DIR = os.path.join(UPLOAD_DIR, "slips")
 

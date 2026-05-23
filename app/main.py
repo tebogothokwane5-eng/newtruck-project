@@ -39,7 +39,7 @@ def get_token():
         return store.get("auth").get("token")
     return None
 
-API_URL = "https://yourapp.onrender.com"
+API_URL = "https://newtruck-project.onrender.com"
 
 
 

@@ -13,7 +13,7 @@ from backend.utils.email import send_email
 # ---------------- ROUTER ----------------
 router = APIRouter(prefix="/jobs/admin", tags=["admin"])
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL ="https://newtruck-project.onrender.com"
 UPLOAD_DIR = "backend/uploads/truck_packs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
