@@ -3,28 +3,31 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # -----------------------------
-# DATABASE CONFIG (SECURE)
+# ENV LOAD
 # -----------------------------
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://myuser:98032854@localhost:5432/mydb"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is missing on Render environment variables")
+
+DATABASE_URL = DATABASE_URL.strip()
 
 # -----------------------------
-# ENGINE (PRODUCTION SAFE)
+# RENDER FIX #1: postgres -> postgresql
+# -----------------------------
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# -----------------------------
+# ENGINE (Render-safe)
 # -----------------------------
 engine = create_engine(
     DATABASE_URL,
-    pool_size=10,          # handles concurrent users
-    max_overflow=20,
-    pool_pre_ping=True,    # auto-reconnect broken connections
-    pool_recycle=1800,     # avoids stale connections
-    echo=False             # NEVER true in production
+    pool_pre_ping=True,
+    pool_recycle=300,
+    connect_args={"sslmode": "require"}  # important for Render Postgres
 )
 
-# -----------------------------
-# SESSION
-# -----------------------------
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
@@ -33,16 +36,9 @@ SessionLocal = sessionmaker(
 
 Base = declarative_base()
 
-
-# -----------------------------
-# DEPENDENCY (FASTAPI)
-# -----------------------------
 def get_db():
     db = SessionLocal()
     try:
         yield db
-    except Exception as e:
-        db.rollback()   # IMPORTANT: prevents corrupted transactions
-        raise e
     finally:
         db.close()

@@ -8,6 +8,7 @@ from kivy.uix.button import Button
 from plyer import filechooser
 from kivymd.uix.card import MDCard
 from kivymd.uix.fitimage import FitImage
+
 import webbrowser
 from app.utils.network import NetworkClient
 import requests
@@ -138,7 +139,7 @@ ScreenManager:
 
         MDTopAppBar:
             title: "Create Account"
-            left_action_items: [["arrow-left", lambda x: app.go_login()]]
+            left_action_items: [["arrow-left", lambda x: app.login()]]
 
         ScrollView:
             MDBoxLayout:
@@ -480,6 +481,9 @@ class RegisterScreen(MDScreen):
     # ---------------- REGISTER ----------------
 
     def register(self):
+        file_obj = None   # ✅ MOVE HERE (outside try)
+        files = None      # optional but good
+
         try:
             username = self.ids.reg_username.text.strip()
             password = self.ids.reg_password.text.strip()
@@ -487,7 +491,7 @@ class RegisterScreen(MDScreen):
             id_no = self.ids.reg_id_no.text.strip()
             email = self.ids.reg_email.text.strip()
 
-            role = self.selected_role  # ✅ IMPORTANT FIX
+            role = self.selected_role
 
             # validation
             if not all([username, password, phone, id_no, email, role]):
@@ -498,7 +502,6 @@ class RegisterScreen(MDScreen):
                 toast("Phone number must be exactly 10 digits")
                 return
 
-            # backend-safe roles only
             if role not in ["main_contractor", "truck_owner"]:
                 toast("Invalid role selected")
                 return
@@ -511,9 +514,6 @@ class RegisterScreen(MDScreen):
                 "email": email,
                 "role": role,
             }
-
-            files = None
-            file_obj = None
 
             if self.selected_file:
                 file_obj = open(self.selected_file, "rb")

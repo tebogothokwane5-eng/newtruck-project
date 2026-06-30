@@ -46,7 +46,7 @@ class User(Base):
 
     role = Column(SQLEnum(RoleEnum, native_enum=False), nullable=False)
 
-    document = Column(String(255), nullable=True)
+    document = Column(Text, nullable=True)
     is_active = Column(Boolean, default=False)
 
     # Relationships

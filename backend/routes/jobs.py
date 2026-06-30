@@ -8,7 +8,8 @@ from fastapi.responses import FileResponse
 from backend.schemas import JobCreate, JobStatusUpdate, AssignOrderPayload
 from backend.database import get_db
 from backend.routes.auth import get_current_user
-from backend.models.user import Job, JobStatus, JobApplication, User, DeliverySlip
+from backend.models.user import User
+from backend.models.user import Job, JobStatus
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 

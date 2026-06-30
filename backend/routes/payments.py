@@ -1,38 +1,70 @@
 # ---------------- IMPORTS ----------------
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime
-import os
-import requests
+from pydantic import BaseModel
 
 from backend.database import get_db
-from backend.auth_utils import get_current_user
-from backend.payments_service import initiate_paystack, initiate_paypal, get_paypal_token
-from backend.models import Job, Payment
+from backend.models.job_model import WorkOrder
+from backend.models.payment import Payment
 
 
 # ---------------- ROUTER ----------------
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
+# ---------------- REQUEST MODELS ----------------
+class PaymentRequest(BaseModel):
+    method: str  # "paystack" or "paypal"
+
+
+class PaystackRequest(BaseModel):
+    email: str
+    amount: float
+
+
+class PaypalRequest(BaseModel):
+    amount: float
+
+
 # ============================
-# ✅ PUT YOUR FUNCTION HERE
+# DEPENDENCIES (LAZY IMPORTS)
+# ============================
+
+def get_current_user_dep():
+    from backend.routes.auth import get_current_user
+    return get_current_user
+
+
+def get_payment_services():
+    from backend.payments_service import initiate_paystack, initiate_paypal
+    return initiate_paystack, initiate_paypal
+
+
+# ============================
+# MAIN PAYMENT ENDPOINT
 # ============================
 @router.post("/initiate/{job_id}")
 def initiate_payment(
     job_id: int,
-    method: str,
+    data: PaymentRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user_dep())
 ):
-    job = db.query(Job).filter(Job.id == job_id).first()
+    method = data.method.lower()
+
+    # lazy load services (prevents circular import crash)
+    initiate_paystack, initiate_paypal = get_payment_services()
+
+    # ---------------- GET JOB ----------------
+    job = db.query(WorkOrder).filter(WorkOrder.id == job_id).first()
 
     if not job:
-        raise HTTPException(404, "Job not found")
+        raise HTTPException(status_code=404, detail="Job not found")
 
-    if job.status != "completed":
-        raise HTTPException(400, "Job not completed")
+    if str(job.status).lower() != "completed":
+        raise HTTPException(status_code=400, detail="Job not completed")
 
+    # ---------------- CREATE PAYMENT RECORD ----------------
     payment = Payment(
         job_id=job.id,
         contractor_id=current_user.id,
@@ -45,24 +77,78 @@ def initiate_payment(
     db.commit()
     db.refresh(payment)
 
+    # ================= PAYSTACK =================
     if method == "paystack":
         res = initiate_paystack(current_user.email, job.price)
+
+        print("PAYSTACK RESPONSE:", res)
+
+        if not res or "data" not in res:
+            raise HTTPException(status_code=500, detail="Paystack initialization failed")
+
         payment.reference = res["data"]["reference"]
         db.commit()
-        return {"payment_url": res["data"]["authorization_url"]}
 
+        return {
+            "payment_url": res["data"]["authorization_url"],
+            "reference": payment.reference
+        }
+
+    # ================= PAYPAL =================
     elif method == "paypal":
         res = initiate_paypal(job.price)
 
-        approval_url = None
-        for link in res["links"]:
-            if link["rel"] == "approve":
-                approval_url = link["href"]
+        print("PAYPAL RESPONSE:", res)
+
+        if not res or "links" not in res:
+            raise HTTPException(status_code=500, detail="PayPal initialization failed")
+
+        approval_url = next(
+            (link["href"] for link in res["links"] if link["rel"] == "approve"),
+            None
+        )
+
+        if not approval_url:
+            raise HTTPException(status_code=500, detail="No approval URL from PayPal")
 
         payment.reference = res["id"]
         db.commit()
 
-        return {"payment_url": approval_url}
+        return {
+            "payment_url": approval_url,
+            "reference": payment.reference
+        }
 
+    # ================= INVALID METHOD =================
     else:
-        raise HTTPException(400, "Invalid payment method")
+        raise HTTPException(status_code=400, detail="Invalid payment method")
+
+
+# ============================
+# PAYSTACK TEST ROUTE
+# ============================
+@router.post("/paystack/initiate")
+def paystack_route(data: PaystackRequest):
+    initiate_paystack, _ = get_payment_services()
+
+    res = initiate_paystack(data.email, data.amount)
+
+    if not res or "data" not in res:
+        raise HTTPException(status_code=500, detail="Paystack failed")
+
+    return res
+
+
+# ============================
+# PAYPAL TEST ROUTE
+# ============================
+@router.post("/paypal/initiate")
+def paypal_route(data: PaypalRequest):
+    _, initiate_paypal = get_payment_services()
+
+    res = initiate_paypal(data.amount)
+
+    if not res:
+        raise HTTPException(status_code=500, detail="PayPal failed")
+
+    return res
