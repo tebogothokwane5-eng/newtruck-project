@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from backend.database import get_db
-from backend.models.job_model import Job
+from backend.models.user import Job 
 from backend.models.payment import Payment
 
 
