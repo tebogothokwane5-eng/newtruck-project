@@ -1,8 +1,8 @@
 import enum
 from sqlalchemy import (
     Column, Integer, String, Float,
-    Enum as SQLEnum, ForeignKey, Boolean,
-    DateTime, Text, Index
+    Enum as SQLEnum, ForeignKey,
+    Boolean, DateTime, Text
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -32,50 +32,84 @@ class ApplicationStatus(str, enum.Enum):
 
 # ---------------- USER ----------------
 
+import enum
+from sqlalchemy import (
+    Column, Integer, String, Enum as SQLEnum,
+    Boolean, Text
+)
+from sqlalchemy.orm import relationship
+from backend.database import Base
+
+
+# ---------------- ENUM ----------------
+
+class RoleEnum(str, enum.Enum):
+    truck_owner = "truck_owner"
+    main_contractor = "main_contractor"
+    admin = "admin"
+
+
+# ---------------- USER ----------------
+
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(120), unique=True, index=True, nullable=False)
 
-    phone_no = Column(String(20), nullable=True)
-    id_no = Column(String(50), nullable=True)
+    phone_no = Column(String(20))
+    id_no = Column(String(50))
 
     password = Column(String(255), nullable=False)
 
     role = Column(SQLEnum(RoleEnum, native_enum=False), nullable=False)
 
-    document = Column(Text, nullable=True)
+    document = Column(Text)
     is_active = Column(Boolean, default=False)
 
-    # Relationships
+    # ---------------- RELATIONSHIPS ----------------
+
+    # Jobs created by contractor
     jobs_created = relationship(
         "Job",
         back_populates="contractor",
         foreign_keys="Job.contractor_id",
-        cascade="all, delete"
+        cascade="all, delete-orphan"
     )
 
+    # Applications submitted by truck owner
     applications = relationship(
         "JobApplication",
         back_populates="truck_owner",
         foreign_keys="JobApplication.truck_owner_id",
-        cascade="all, delete"
+        cascade="all, delete-orphan"
     )
 
+    # Feedback GIVEN (contractor → truck owner)
     feedback_given = relationship(
         "Feedback",
         back_populates="contractor",
-        foreign_keys="Feedback.contractor_id"
+        foreign_keys="Feedback.contractor_id",
+        cascade="all, delete-orphan"
     )
 
+    # Feedback RECEIVED (truck owner side)
     feedback_received = relationship(
         "Feedback",
         back_populates="truck_owner",
-        foreign_keys="Feedback.truck_owner_id"
+        foreign_keys="Feedback.truck_owner_id",
+        cascade="all, delete-orphan"
     )
 
+    # ✅ WorkOrders owned by this user (truck owner)
+    work_orders = relationship(
+        "WorkOrder",
+        back_populates="owner",
+        foreign_keys="WorkOrder.truck_owner_id",
+        cascade="all, delete-orphan"
+    )
 
 # ---------------- JOB ----------------
 
@@ -90,22 +124,25 @@ class Job(Base):
     target_limit = Column(Integer, default=0)
     applicant_count = Column(Integer, default=0)
 
-    status = Column(SQLEnum(JobStatus, native_enum=False),
-                    default=JobStatus.pending,
-                    nullable=False,
-                    index=True)
+    status = Column(
+        SQLEnum(JobStatus, native_enum=False),
+        default=JobStatus.pending,
+        nullable=False,
+        index=True
+    )
 
     contractor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    assigned_truck_owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    assigned_truck_owner_id = Column(Integer, ForeignKey("users.id"))
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
-    order_number = Column(String(100), nullable=True)
-    address = Column(String(255), nullable=True)
-    latitude = Column(Float, nullable=True)
-    longitude = Column(Float, nullable=True)
+    order_number = Column(String(100))
+    address = Column(String(255))
+    latitude = Column(Float)
+    longitude = Column(Float)
 
-    # Relationships
+    # ---------------- RELATIONSHIPS ----------------
+
     contractor = relationship(
         "User",
         back_populates="jobs_created",
@@ -114,8 +151,7 @@ class Job(Base):
 
     applications = relationship(
         "JobApplication",
-        back_populates="job",
-        cascade="all, delete-orphan"
+        back_populates="job"
     )
 
     assigned_truck_owner = relationship(
@@ -135,7 +171,7 @@ class JobApplication(Base):
     job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), index=True)
     truck_owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
-    truck_pack = Column(String(255), nullable=True)
+    truck_pack = Column(String(255))
 
     status = Column(
         SQLEnum(ApplicationStatus, native_enum=False),
@@ -144,17 +180,22 @@ class JobApplication(Base):
         nullable=False
     )
 
-    order_number = Column(String(100), nullable=True)
-    location = Column(String(255), nullable=True)
+    order_number = Column(String(100))
+    location = Column(String(255))
 
-    # Relationships
+    # ---------------- RELATIONSHIPS ----------------
+
     job = relationship("Job", back_populates="applications")
-    truck_owner = relationship("User", back_populates="applications")
+
+    truck_owner = relationship(
+        "User",
+        back_populates="applications",
+        foreign_keys=[truck_owner_id]
+    )
 
     delivery_history = relationship(
         "DeliverySlip",
-        back_populates="application",
-        cascade="all, delete-orphan"
+        back_populates="application"
     )
 
 
@@ -176,7 +217,10 @@ class DeliverySlip(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    application = relationship("JobApplication", back_populates="delivery_history")
+    application = relationship(
+        "JobApplication",
+        back_populates="delivery_history"
+    )
 
 
 # ---------------- FEEDBACK ----------------
@@ -192,7 +236,9 @@ class Feedback(Base):
     contractor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     rating = Column(Integer, nullable=False)
-    comment = Column(String(500), nullable=True)
+    comment = Column(String(500))
+
+    # ---------------- RELATIONSHIPS ----------------
 
     truck_owner = relationship(
         "User",

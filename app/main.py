@@ -214,6 +214,49 @@ ScreenManager:
             padding: "12dp"
             spacing: "10dp"
 
+            # ================= PAYMENTS PANEL =================
+            MDCard:
+                size_hint_y: None
+                height: "140dp"
+                padding: "10dp"
+                radius: [12]
+                md_bg_color: 0.12, 0.12, 0.12, 1
+
+                MDBoxLayout:
+                    orientation: "vertical"
+                    spacing: "8dp"
+
+                    MDLabel:
+                        text: "Payments"
+                        theme_text_color: "Custom"
+                        text_color: 1, 1, 1, 1
+                        font_style: "H6"
+
+                    MDLabel:
+                        text: "Select payment method for completed jobs"
+                        theme_text_color: "Custom"
+                        text_color: 0.7, 0.7, 0.7, 1
+                        font_size: "12sp"
+
+                    MDBoxLayout:
+                        spacing: "10dp"
+
+                        MDRaisedButton:
+                            text: "Paystack"
+                            md_bg_color: 0.2, 0.6, 1, 1
+                            on_release: root.open_paystack()
+
+                        MDRaisedButton:
+                            text: "PayPal"
+                            md_bg_color: 1, 0.6, 0.2, 1
+                            on_release: root.open_paypal()
+
+                        MDRaisedButton:
+                            text: "Check Status"
+                            md_bg_color: 0.3, 0.8, 0.4, 1
+                            on_release: root.check_payment_status()
+
+            # ================= JOBS HEADER =================
             MDLabel:
                 text: "Your Jobs"
                 theme_text_color: "Custom"
@@ -236,21 +279,18 @@ ScreenManager:
 
             MDRaisedButton:
                 text: "Post Job"
-                icon: "plus"
                 size_hint_x: 1
                 md_bg_color: 0.2, 0.6, 1, 1
                 on_release: root.post_job()
 
             MDRaisedButton:
                 text: "Refresh"
-                icon: "refresh"
                 size_hint_x: 1
                 md_bg_color: 0.2, 0.7, 0.4, 1
                 on_release: root.load_jobs()
 
             MDRaisedButton:
                 text: "Monitoring"
-                icon: "account-search"
                 size_hint_x: 1
                 md_bg_color: 0.8, 0.4, 0.2, 1
                 on_release: root.load_applicants()

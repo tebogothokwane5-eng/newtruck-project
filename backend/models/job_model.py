@@ -1,18 +1,12 @@
-# backend/models/job_model.py
 import enum
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, Enum as SQLEnum, ForeignKey
 from sqlalchemy.orm import relationship
 from backend.database import Base
 
 
-class JobStatus(enum.Enum):
+class JobStatus(str, enum.Enum):
     pending = "pending"
     completed = "completed"
-
-
-class ApplicationStatus(enum.Enum):
-    applied = "applied"
-    accepted = "accepted"
 
 
 class WorkOrder(Base):
@@ -22,12 +16,18 @@ class WorkOrder(Base):
 
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
-
     price = Column(Integer, nullable=False)
 
-    status = Column(Enum(JobStatus), default=JobStatus.pending)
+    status = Column(
+        SQLEnum(JobStatus, native_enum=False),
+        default=JobStatus.pending,
+        nullable=False
+    )
 
-    truck_owner_id = Column(Integer, ForeignKey("users.id"))
+    truck_owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    # optional relationship
-    owner = relationship("User", back_populates="jobs_created")
+    # ✅ RELATIONSHIP (correct)
+    owner = relationship(
+        "User",
+        back_populates="work_orders"
+    )

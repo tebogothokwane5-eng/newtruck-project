@@ -1,16 +1,23 @@
 import os
 import requests
-from fastapi import APIRouter, HTTPException
-
-router = APIRouter(prefix="/payments", tags=["payments"])
+from fastapi import HTTPException
 
 # ==============================
-# PAYSTACK CONFIG
+# ENV SAFETY CHECKS
 # ==============================
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
+PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
+PAYPAL_SECRET = os.getenv("PAYPAL_SECRET")
+PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
 
 
+# ==============================
+# PAYSTACK
+# ==============================
 def initiate_paystack(email: str, amount: float):
+    if not PAYSTACK_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Missing PAYSTACK_SECRET_KEY")
+
     url = "https://api.paystack.co/transaction/initialize"
 
     headers = {
@@ -26,21 +33,24 @@ def initiate_paystack(email: str, amount: float):
 
     response = requests.post(url, json=data, headers=headers)
 
-    if response.status_code != 200:
-        raise Exception("Paystack initialization failed")
+    # 🔥 show real error from Paystack
+    if response.status_code not in [200, 201]:
+        return {
+            "error": True,
+            "status": response.status_code,
+            "message": response.text
+        }
 
     return response.json()
 
 
 # ==============================
-# PAYPAL CONFIG
+# PAYPAL TOKEN
 # ==============================
-PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
-PAYPAL_SECRET = os.getenv("PAYPAL_SECRET")
-PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
-
-
 def get_paypal_token():
+    if not PAYPAL_CLIENT_ID or not PAYPAL_SECRET:
+        raise HTTPException(status_code=500, detail="Missing PayPal credentials")
+
     url = f"{PAYPAL_BASE}/v1/oauth2/token"
 
     response = requests.post(
@@ -50,11 +60,17 @@ def get_paypal_token():
     )
 
     if response.status_code != 200:
-        raise Exception("PayPal auth failed")
+        raise HTTPException(
+            status_code=400,
+            detail=response.text
+        )
 
     return response.json()["access_token"]
 
 
+# ==============================
+# PAYPAL INIT
+# ==============================
 def initiate_paypal(amount: float):
     access_token = get_paypal_token()
 
@@ -84,20 +100,6 @@ def initiate_paypal(amount: float):
     response = requests.post(url, json=data, headers=headers)
 
     if response.status_code not in [200, 201]:
-        raise HTTPException(status_code=400, detail="PayPal order creation failed")
+        raise HTTPException(status_code=400, detail=response.text)
 
     return response.json()
-
-
-# ==============================
-# API ENDPOINTS (THIS WAS MISSING)
-# ==============================
-
-@router.post("/paystack/initiate")
-def paystack_route(email: str, amount: float):
-    return initiate_paystack(email, amount)
-
-
-@router.post("/paypal/initiate")
-def paypal_route(amount: float):
-    return initiate_paypal(amount)
