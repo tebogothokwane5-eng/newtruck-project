@@ -7,6 +7,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from backend.database import Base
+from backend.models.work_order import WorkOrder
 
 
 # ---------------- ENUMS ----------------
@@ -32,25 +33,6 @@ class ApplicationStatus(str, enum.Enum):
 
 # ---------------- USER ----------------
 
-import enum
-from sqlalchemy import (
-    Column, Integer, String, Enum as SQLEnum,
-    Boolean, Text
-)
-from sqlalchemy.orm import relationship
-from backend.database import Base
-
-
-# ---------------- ENUM ----------------
-
-class RoleEnum(str, enum.Enum):
-    truck_owner = "truck_owner"
-    main_contractor = "main_contractor"
-    admin = "admin"
-
-
-# ---------------- USER ----------------
-
 class User(Base):
     __tablename__ = "users"
 
@@ -71,7 +53,6 @@ class User(Base):
 
     # ---------------- RELATIONSHIPS ----------------
 
-    # Jobs created by contractor
     jobs_created = relationship(
         "Job",
         back_populates="contractor",
@@ -79,7 +60,6 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
-    # Applications submitted by truck owner
     applications = relationship(
         "JobApplication",
         back_populates="truck_owner",
@@ -87,7 +67,6 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
-    # Feedback GIVEN (contractor → truck owner)
     feedback_given = relationship(
         "Feedback",
         back_populates="contractor",
@@ -95,7 +74,6 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
-    # Feedback RECEIVED (truck owner side)
     feedback_received = relationship(
         "Feedback",
         back_populates="truck_owner",
@@ -103,13 +81,25 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
-    # ✅ WorkOrders owned by this user (truck owner)
     work_orders = relationship(
         "WorkOrder",
-        back_populates="owner",
+        back_populates="truck_owner",
         foreign_keys="WorkOrder.truck_owner_id",
         cascade="all, delete-orphan"
     )
+
+    contractor_payments = relationship(
+        "Payment",
+        back_populates="contractor",
+        foreign_keys="Payment.contractor_id"
+    )
+
+    owner_payments = relationship(
+        "Payment",
+        back_populates="truck_owner",
+        foreign_keys="Payment.truck_owner_id"
+    )
+
 
 # ---------------- JOB ----------------
 
