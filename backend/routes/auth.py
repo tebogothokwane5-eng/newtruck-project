@@ -1,6 +1,9 @@
 # backend/routes/auth.py
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import FileResponse
+import os
+import time
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import timedelta
@@ -23,6 +26,9 @@ from backend.auth_utils import (
 
 # ✅ SINGLE router (DO NOT redefine later)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+UPLOAD_DOC_DIR = "uploads/documents"
+os.makedirs(UPLOAD_DOC_DIR, exist_ok=True)
 
 # -------------------------
 # AUTH CONFIG
@@ -67,8 +73,11 @@ def register(
         if db.query(User).filter(User.id_no == id_no).first():
             raise HTTPException(status_code=400, detail="ID Number already registered")
 
-        # 📄 READ FILE
-        file_bytes = document.file.read()
+        # 📄 SAVE FILE TO DISK
+        filename = f"{int(time.time())}_{document.filename.replace(' ', '_')}"
+        file_path = os.path.join(UPLOAD_DOC_DIR, filename)
+        with open(file_path, "wb") as buffer:
+            buffer.write(document.file.read())
 
         # 🧱 CREATE USER
         new_user = User(
@@ -78,7 +87,7 @@ def register(
             phone_no=phone_no,
             id_no=id_no,
             role=role,
-            document=file_bytes
+            document=filename
         )
 
         db.add(new_user)
@@ -101,7 +110,6 @@ def register(
         }
 
     except HTTPException:
-        # ✅ IMPORTANT: do NOT convert valid HTTP errors into 500
         raise
 
     except IntegrityError:
@@ -114,6 +122,7 @@ def register(
         print("REGISTER ERROR TRACEBACK:")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 # -------------------------
 # LOGIN
