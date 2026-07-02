@@ -4,9 +4,8 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from backend.database import get_db
-from backend.models.user import Job 
+from backend.models.user import Job
 from backend.models.payment import Payment
-
 
 # ---------------- ROUTER ----------------
 router = APIRouter(prefix="/payments", tags=["Payments"])
@@ -52,11 +51,10 @@ def initiate_payment(
 ):
     method = data.method.lower()
 
-    # lazy load services (prevents circular import crash)
     initiate_paystack, initiate_paypal = get_payment_services()
 
     # ---------------- GET JOB ----------------
-    job = db.query(WorkOrder).filter(WorkOrder.id == job_id).first()
+    job = db.query(Job).filter(Job.id == job_id).first()
 
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -81,10 +79,20 @@ def initiate_payment(
     if method == "paystack":
         res = initiate_paystack(current_user.email, job.price)
 
-        print("PAYSTACK RESPONSE:", res)
+        print("🔵 PAYSTACK RAW RESPONSE:", res)
 
-        if not res or "data" not in res:
-            raise HTTPException(status_code=500, detail="Paystack initialization failed")
+        # 🔴 FIX: expose real error
+        if not res:
+            raise HTTPException(status_code=500, detail="Empty response from Paystack")
+
+        if res.get("error"):
+            raise HTTPException(
+                status_code=res.get("status", 500),
+                detail=res.get("message")
+            )
+
+        if "data" not in res:
+            raise HTTPException(status_code=500, detail=f"Invalid Paystack response: {res}")
 
         payment.reference = res["data"]["reference"]
         db.commit()
@@ -98,10 +106,13 @@ def initiate_payment(
     elif method == "paypal":
         res = initiate_paypal(job.price)
 
-        print("PAYPAL RESPONSE:", res)
+        print("🟡 PAYPAL RAW RESPONSE:", res)
 
-        if not res or "links" not in res:
-            raise HTTPException(status_code=500, detail="PayPal initialization failed")
+        if not res:
+            raise HTTPException(status_code=500, detail="Empty response from PayPal")
+
+        if "links" not in res:
+            raise HTTPException(status_code=500, detail=f"Invalid PayPal response: {res}")
 
         approval_url = next(
             (link["href"] for link in res["links"] if link["rel"] == "approve"),
@@ -125,7 +136,7 @@ def initiate_payment(
 
 
 # ============================
-# PAYSTACK TEST ROUTE
+# PAYSTACK TEST ROUTE (FIXED)
 # ============================
 @router.post("/paystack/initiate")
 def paystack_route(data: PaystackRequest):
@@ -133,8 +144,20 @@ def paystack_route(data: PaystackRequest):
 
     res = initiate_paystack(data.email, data.amount)
 
-    if not res or "data" not in res:
-        raise HTTPException(status_code=500, detail="Paystack failed")
+    print("🔵 TEST PAYSTACK RESPONSE:", res)
+
+    # 🔴 FIX: expose real Paystack error
+    if not res:
+        raise HTTPException(status_code=500, detail="Empty response from Paystack")
+
+    if res.get("error"):
+        raise HTTPException(
+            status_code=res.get("status", 500),
+            detail=res.get("message")
+        )
+
+    if "data" not in res:
+        raise HTTPException(status_code=500, detail=f"Invalid response: {res}")
 
     return res
 
@@ -148,7 +171,9 @@ def paypal_route(data: PaypalRequest):
 
     res = initiate_paypal(data.amount)
 
+    print("🟡 TEST PAYPAL RESPONSE:", res)
+
     if not res:
-        raise HTTPException(status_code=500, detail="PayPal failed")
+        raise HTTPException(status_code=500, detail="Empty response from PayPal")
 
     return res
