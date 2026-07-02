@@ -17,6 +17,7 @@ from backend.models.user import (
     DeliverySlip
 )
 
+
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
 # ----------------- CONFIG -----------------

@@ -26,7 +26,7 @@ class NetworkClient:
                     timeout=NetworkClient.DEFAULT_TIMEOUT
                 )
 
-                response.raise_for_status()
+                
 
             except Exception as e:
                 error = e
