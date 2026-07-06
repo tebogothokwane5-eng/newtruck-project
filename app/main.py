@@ -330,21 +330,6 @@ ScreenManager:
                     size_hint_y: None
                     height: self.minimum_height
 
-                # ---------------- SLIPS SECTION ----------------
-                MDLabel:
-                    text: "Slips Viewer"
-                    bold: True
-                    size_hint_y: None
-                    height: "30dp"
-
-                MDBoxLayout:
-                    id: slips_container
-                    orientation: "vertical"
-                    spacing: "10dp"
-                    padding: "10dp"
-                    size_hint_y: None
-                    height: self.minimum_height
-
 
 
 # ---------------- APPLICATIONS ----------------
@@ -1885,26 +1870,21 @@ class TruckOwnerHome(MDScreen):
         import threading
         import os
         import json
+        from kivy.uix.scrollview import ScrollView
         from kivymd.uix.boxlayout import MDBoxLayout
         from kivymd.uix.label import MDLabel
-
-        container = self.ids.get("slips_container")
-
-        if not container:
-            print("❌ slips_container missing")
-            return
-
-        container.clear_widgets()
+        from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.button import MDFlatButton
 
         if error:
-            container.add_widget(MDLabel(text="Failed to load slips"))
+            toast("Failed to load slips")
             return
 
         if not response:
-            container.add_widget(MDLabel(text="No slips found"))
+            toast("No slips found")
             return
 
-        # ✅ FIX: ensure response is JSON (NOT bytes)
+        # ✅ ensure response is JSON (NOT bytes)
         if isinstance(response, bytes):
             response = json.loads(response.decode("utf-8"))
         elif isinstance(response, str):
@@ -1922,15 +1902,35 @@ class TruckOwnerHome(MDScreen):
 
         print("✅ SLIPS COUNT:", len(slips_data))
 
-        # UI container for images
+        if not slips_data:
+            toast("No slips uploaded yet")
+            return
+
+        # ---------------- DIALOG CONTENT ----------------
+        scroll = ScrollView(size_hint=(1, None), height="350dp")
+
         self.slips_content = MDBoxLayout(
             orientation="vertical",
             size_hint_y=None,
-            spacing=10
+            spacing=10,
+            padding=10
         )
         self.slips_content.bind(minimum_height=self.slips_content.setter("height"))
 
-        container.add_widget(self.slips_content)
+        scroll.add_widget(self.slips_content)
+
+        if hasattr(self, "dialog") and self.dialog:
+            self.dialog.dismiss()
+
+        self.dialog = MDDialog(
+            title="Delivery Slips",
+            type="custom",
+            content_cls=scroll,
+            buttons=[
+                MDFlatButton(text="CLOSE", on_release=lambda x: self.dialog.dismiss())
+            ],
+        )
+        self.dialog.open()
 
         # temp folder
         temp_dir = os.path.join(os.getcwd(), "temp_slips")
@@ -1943,8 +1943,6 @@ class TruckOwnerHome(MDScreen):
             args=(slips_data, temp_dir),
             daemon=True
         ).start()
-
-        # ---------------- DOWNLOAD THREAD ----------------
 
     def _download_slips_worker(self, slips, temp_dir):
         import requests
