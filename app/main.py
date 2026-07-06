@@ -1512,13 +1512,12 @@ class TruckOwnerHome(MDScreen):
     
     def on_apps_loaded(self, response, error, jobs):
         from datetime import datetime
+        from app.utils.network import NetworkClient
 
         def ui(dt):
             job_to_app = {}
-
             if response and response.status_code == 200:
                 my_apps = response.json()
-
                 for item in my_apps:
                     job_id = item.get("job_id")
                     app_id = item.get("id")
@@ -1528,7 +1527,6 @@ class TruckOwnerHome(MDScreen):
             for job in jobs:
                 job_id = job.get("id")
                 job["application_id"] = job_to_app.get(job_id)
-
                 job["title"] = job.get("title") or "Untitled"
                 job["description"] = job.get("description") or "No description"
                 job["location"] = job.get("location") or "N/A"
@@ -1544,19 +1542,49 @@ class TruckOwnerHome(MDScreen):
                         return "Unknown"
 
                 job["created_at"] = fmt(job.get("created_at"))
+                job["payment_status"] = "N/A"
 
+            self._load_my_payments(jobs)
+
+        Clock.schedule_once(ui)
+
+    def _load_my_payments(self, jobs):
+        from app.utils.network import NetworkClient
+
+        app = MDApp.get_running_app()
+        token = getattr(app, "current_user", {}).get("token")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        NetworkClient.get(
+            f"{API_URL}/payments/my-payments",
+            headers=headers,
+            callback=lambda res, error=None: self.on_payments_loaded(res, error, jobs)
+        )
+
+    def on_payments_loaded(self, response, error, jobs):
+        def ui(dt):
+            job_to_payment = {}
+
+            if response and response.status_code == 200:
+                payments = response.json()
+                for p in payments:
+                    job_to_payment[p.get("job_id")] = p.get("status", "pending")
+
+            for job in jobs:
+                job_id = job.get("id")
+                job["payment_status"] = job_to_payment.get(job_id, "N/A")
                 self._add_job_card(job)
 
             toast("Jobs loaded")
 
         Clock.schedule_once(ui)
 
+
     
         # -----------------------------
         # JOB CARD
     # -----------------------------
     def _add_job_card(self, job):
-
         from kivymd.uix.boxlayout import MDBoxLayout
         from kivymd.uix.button import MDIconButton
         from kivymd.uix.label import MDLabel
@@ -1611,6 +1639,12 @@ class TruckOwnerHome(MDScreen):
 
         card.add_widget(MDLabel(
             text=f"Status: {job['status']}",
+            size_hint_y=None,
+            height="25dp"
+        ))
+
+        card.add_widget(MDLabel(
+            text=f"Payment: {job.get('payment_status', 'N/A').title()}",
             size_hint_y=None,
             height="25dp"
         ))
