@@ -185,3 +185,26 @@ def paypal_route(data: PaypalRequest):
         raise HTTPException(status_code=500, detail="Empty response from PayPal")
 
     return res
+
+# ============================
+# MY PAYMENTS (TRUCK OWNER)
+# ============================
+@router.get("/my-payments")
+def my_payments(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_dep())
+):
+    payments = db.query(Payment).filter(
+        Payment.truck_owner_id == current_user.id
+    ).all()
+
+    return [
+        {
+            "job_id": p.job_id,
+            "status": p.status,
+            "amount": p.amount,
+            "reference": p.reference,
+            "created_at": p.created_at.isoformat() if p.created_at else None
+        }
+        for p in payments
+    ]
