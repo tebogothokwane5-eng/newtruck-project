@@ -717,7 +717,7 @@ class ContractorHome(MDScreen):
                 "description": desc,
                 "contractor_id": int(app.current_user["id"]),
                 "target_limit": int(limit),
-           }
+            }
 
             headers = {"Authorization": f"Bearer {token}"}
 
@@ -738,6 +738,119 @@ class ContractorHome(MDScreen):
         except Exception as e:
             print("Post job error:", e)
             toast("Server error")
+
+    # ---------------- PAYMENTS ----------------
+    def _get_completed_jobs_for_payment(self, on_result):
+        """Fetch this contractor's completed jobs, then call on_result(list_of_jobs)."""
+        app = MDApp.get_running_app()
+        token = getattr(app, "current_user", {}).get("token")
+
+        if not token:
+            toast("Please login again")
+            return
+
+        headers = {"Authorization": f"Bearer {token}"}
+
+        def handle_response(response, error=None):
+            def ui(dt):
+                if error or response is None or response.status_code != 200:
+                    toast("Could not load jobs")
+                    return
+
+                jobs = response.json()
+                completed = [j for j in jobs if str(j.get("status", "")).lower() == "completed"]
+
+                if not completed:
+                    toast("No completed jobs to pay for")
+                    return
+
+                on_result(completed)
+
+            Clock.schedule_once(ui)
+
+        NetworkClient.get(f"{API_URL}/jobs/", headers=headers, callback=handle_response)
+
+    def _pick_job_dialog(self, jobs, on_pick):
+        """Show a simple list dialog to pick a job, then call on_pick(job)."""
+        from kivymd.uix.boxlayout import MDBoxLayout
+        from kivymd.uix.button import MDFlatButton
+        from kivymd.uix.dialog import MDDialog
+
+        if len(jobs) == 1:
+            on_pick(jobs[0])
+            return
+
+        layout = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None)
+        layout.bind(minimum_height=layout.setter("height"))
+
+        for job in jobs:
+            btn = MDFlatButton(
+                text=f"{job.get('title', 'Untitled')} (#{job.get('id')})",
+                size_hint_y=None,
+                height="40dp"
+            )
+            btn.bind(on_release=lambda x, j=job: (self.dialog.dismiss(), on_pick(j)))
+            layout.add_widget(btn)
+
+        self.dialog = MDDialog(
+            title="Select a completed job",
+            type="custom",
+            content_cls=layout,
+            buttons=[MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss())],
+        )
+        self.dialog.open()
+
+    def _initiate_payment(self, job, method):
+        app = MDApp.get_running_app()
+        token = getattr(app, "current_user", {}).get("token")
+
+        headers = {"Authorization": f"Bearer {token}"}
+        payload = {"method": method}
+
+        def handle_response(response, error=None):
+            def ui(dt):
+                if error or response is None:
+                    toast("Network error")
+                    return
+
+                if response.status_code not in (200, 201):
+                    print("PAYMENT ERROR:", response.text)
+                    toast(f"Payment error: {response.status_code}")
+                    return
+
+                data = response.json()
+                payment_url = data.get("payment_url")
+
+                if payment_url:
+                    webbrowser.open(payment_url)
+                    toast("Opening payment page...")
+                else:
+                    toast("No payment URL returned")
+
+            Clock.schedule_once(ui)
+
+        toast(f"Starting {method} payment...")
+
+        NetworkClient.post(
+            f"{API_URL}/payments/initiate/{job['id']}",
+            json=payload,
+            headers=headers,
+            callback=handle_response
+        )
+
+    def open_paystack(self):
+        self._get_completed_jobs_for_payment(
+            lambda jobs: self._pick_job_dialog(jobs, lambda job: self._initiate_payment(job, "paystack"))
+        )
+
+    def open_paypal(self):
+        self._get_completed_jobs_for_payment(
+            lambda jobs: self._pick_job_dialog(jobs, lambda job: self._initiate_payment(job, "paypal"))
+        )
+
+    def check_payment_status(self):
+        toast("Payment status check coming soon")
+
 # ---------------- LOAD JOBS ----------------
     #def load_jobs(self, *args):
         #self.ids.jobs_list.clear_widgets()
