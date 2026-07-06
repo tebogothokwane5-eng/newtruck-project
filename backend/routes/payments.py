@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from backend.database import get_db
-from backend.models.user import Job
+from backend.models.user import Job, JobApplication, ApplicationStatus
 from backend.models.payment import Payment
 
 # ---------------- ROUTER ----------------
@@ -63,10 +63,18 @@ def initiate_payment(
         raise HTTPException(status_code=400, detail="Job not completed")
 
     # ---------------- CREATE PAYMENT RECORD ----------------
+    approved_app = db.query(JobApplication).filter(
+        JobApplication.job_id == job.id,
+        JobApplication.status == ApplicationStatus.approved
+    ).first()
+
+    if not approved_app:
+        raise HTTPException(status_code=400, detail="No approved truck owner for this job")
+
     payment = Payment(
+        truck_owner_id=approved_app.truck_owner_id,
         job_id=job.id,
         contractor_id=current_user.id,
-        truck_owner_id=job.truck_owner_id,
         amount=job.price,
         status="pending"
     )

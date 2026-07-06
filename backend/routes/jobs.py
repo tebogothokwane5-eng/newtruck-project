@@ -80,6 +80,7 @@ def create_job(job: JobCreate, current_user: User = Depends(get_current_user), d
         description=job.description,
         contractor_id=current_user.id,
         target_limit=job.target_limit,
+        price=job.price,
         status=JobStatus.pending
     )
 

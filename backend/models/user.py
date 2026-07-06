@@ -112,6 +112,7 @@ class Job(Base):
     description = Column(Text, nullable=False)
 
     target_limit = Column(Integer, default=0)
+    price = Column(Float, nullable=True, default=0)
     applicant_count = Column(Integer, default=0)
 
     status = Column(

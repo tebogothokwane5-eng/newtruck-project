@@ -37,6 +37,7 @@ class JobCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=150)
     description: str
     target_limit: int = Field(..., gt=0)
+    price: float = Field(default=0, ge=0)
 
 
 class JobOut(BaseModel):
