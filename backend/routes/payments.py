@@ -59,7 +59,7 @@ def initiate_payment(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    if str(job.status).lower() != "completed":
+    if job.status.value.lower() != "completed":
         raise HTTPException(status_code=400, detail="Job not completed")
 
     # ---------------- CREATE PAYMENT RECORD ----------------
