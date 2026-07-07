@@ -106,7 +106,7 @@ def get_all_applications(db: Session = Depends(get_db), current_user: User = Dep
             "truck_owner_id": app.truck_owner_id,
             "status": app.status,
             "truck_pack": app.truck_pack,
-            "truck_pack_url": f"{BASE_URL}/uploads/truck_packs/{filename}" if filename else None
+            "truck_pack_url": f"{BASE_URL}/jobs/admin/uploads/truck_packs/{filename}" if filename else None
         })
     return result
 
@@ -149,7 +149,7 @@ def get_user_by_id(user_id: int, db: Session = Depends(get_db), current_user: Us
     for app in applications:
         if app.truck_pack:
             filename = os.path.basename(app.truck_pack)
-            documents.append(f"{BASE_URL}/uploads/truck_packs/{filename}")
+            documents.append(f"{BASE_URL}/jobs/admin/uploads/truck_packs/{filename}")
 
     return {
         "id": user.id,
