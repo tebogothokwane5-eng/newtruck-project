@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models.user import User, Job, JobApplication, Feedback
+from backend.models.payment import Payment
 from backend.routes.auth import get_current_user
 from backend.utils.email import send_email
 
@@ -163,3 +164,21 @@ def get_user_by_id(user_id: int, db: Session = Depends(get_db), current_user: Us
 @router.get("/users-debug")
 def users_debug(db: Session = Depends(get_db)):
     return [{"id": u.id, "username": u.username, "email": u.email, "is_active": u.is_active} for u in db.query(User).all()]
+
+# ---------------- PAYMENTS ----------------
+@router.get("/all-payments")
+def get_all_payments(db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+    payments = db.query(Payment).all()
+    return [
+        {
+            "id": p.id,
+            "job_id": p.job_id,
+            "contractor_id": p.contractor_id,
+            "truck_owner_id": p.truck_owner_id,
+            "amount": p.amount,
+            "status": p.status,
+            "reference": p.reference,
+            "created_at": p.created_at.isoformat() if p.created_at else None
+        }
+        for p in payments
+    ]
