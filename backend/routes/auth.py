@@ -17,6 +17,7 @@ from backend.models.user import User
 from backend.schemas import UserLogin
 from backend.utils.email import send_email
 from backend.utils.security import hash_password
+from backend.utils.storage import upload_file
 from backend.auth_utils import (
     SECRET_KEY,
     ALGORITHM,
@@ -73,11 +74,9 @@ def register(
         if db.query(User).filter(User.id_no == id_no).first():
             raise HTTPException(status_code=400, detail="ID Number already registered")
 
-        # 📄 SAVE FILE TO DISK
+        # 📄 UPLOAD FILE TO R2
         filename = f"{int(time.time())}_{document.filename.replace(' ', '_')}"
-        file_path = os.path.join(UPLOAD_DOC_DIR, filename)
-        with open(file_path, "wb") as buffer:
-            buffer.write(document.file.read())
+        document_url = upload_file(document.file, f"documents/{filename}", document.content_type)
 
         # 🧱 CREATE USER
         new_user = User(
@@ -87,7 +86,7 @@ def register(
             phone_no=phone_no,
             id_no=id_no,
             role=role,
-            document=filename
+            document=document_url
         )
 
         db.add(new_user)
@@ -114,6 +113,15 @@ def register(
 
     except IntegrityError:
         db.rollback()
+        raise HTTPException(status_code=400, detail="Database constraint error")
+
+    except Exception as e:
+        db.rollback()
+        import traceback
+        print("REGISTER ERROR TRACEBACK:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Internal server error")
+
         raise HTTPException(status_code=400, detail="Database constraint error")
 
     except Exception as e:

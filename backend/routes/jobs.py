@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from backend.schemas import JobCreate, JobStatusUpdate, AssignOrderPayload
 from backend.database import get_db
 from backend.routes.auth import get_current_user
+from backend.utils.storage import upload_file
 
 from backend.models.user import (
     User,
@@ -198,12 +199,18 @@ def apply_with_truck_pack(
         job.applicant_count = (job.applicant_count or 0) + 1
 
     filename = f"{int(time.time())}_{file.filename.replace(' ', '_')}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
+    truck_pack_url_result = upload_file(file.file, f"truck_packs/{filename}", file.content_type)
+    app_entry.truck_pack = truck_pack_url_result
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    db.commit()
+    db.refresh(app_entry)
 
-    app_entry.truck_pack = filename
+    return {
+        "message": "Truck pack uploaded",
+        "application_id": app_entry.id,
+        "file_url": app_entry.truck_pack
+    }
+
 
     db.commit()
     db.refresh(app_entry)
@@ -249,8 +256,6 @@ def update_job_status(job_id: int, payload: JobStatusUpdate,
     db.refresh(job)
 
     return {"message": "Status updated", "job_id": job.id, "status": job.status.value}
-
-
 # ----------------- UPLOAD SLIP -----------------
 @router.post("/applications/{application_id}/upload-slip")
 def upload_delivery_slip(
@@ -266,12 +271,19 @@ def upload_delivery_slip(
         raise HTTPException(status_code=404, detail="Application not found")
 
     filename = f"{int(time.time())}_{file.filename.replace(' ', '_')}"
-    file_path = os.path.join(UPLOAD_SLIP_DIR, filename)
+    slip_url_result = upload_file(file.file, f"delivery_slips/{filename}", file.content_type)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    new_slip = DeliverySlip(application_id=application_id, file_path=slip_url_result)
 
-    new_slip = DeliverySlip(application_id=application_id, file_path=filename)
+    db.add(new_slip)
+    db.commit()
+    db.refresh(new_slip)
+
+    return {
+        "message": "Slip uploaded successfully",
+        "file_url": new_slip.file_path
+    }
+
 
     db.add(new_slip)
     db.commit()
@@ -281,7 +293,6 @@ def upload_delivery_slip(
         "message": "Slip uploaded successfully",
         "file_url": slip_url(filename)
     }
-
 
 # ----------------- SLIPS -----------------
 @router.get("/applications/{application_id}/slips")
@@ -305,16 +316,9 @@ def get_delivery_slips(
         ).all()
 
         response = []
-
         for slip in slips:
             if not slip.file_path:
                 print(f"⚠️ Slip {slip.id} has no file_path")
-                continue
-
-            file_path = os.path.join(UPLOAD_SLIP_DIR, slip.file_path)
-
-            if not os.path.exists(file_path):
-                print(f"⚠️ File missing on disk: {file_path}")
                 continue
 
             try:
@@ -328,15 +332,20 @@ def get_delivery_slips(
 
             response.append({
                 "id": slip.id,
-                "file_url": slip_url(slip.file_path),
+                "file_url": slip.file_path,
                 "created_at": created_at
             })
 
         print("✅ Returning slips:", response)
         return response
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         print("🔥 SLIPS ENDPOINT CRASH:", str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
+
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
