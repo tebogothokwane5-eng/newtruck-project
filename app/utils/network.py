@@ -83,6 +83,17 @@ class NetworkClient:
         )
 
     @staticmethod
+    def put(url, json=None, data=None, headers=None, callback=None):
+        NetworkClient._request(
+            "PUT",
+            url,
+            json=json,
+            data=data,
+            headers=headers,
+            callback=callback
+        )
+
+    @staticmethod
     def delete(url, headers=None, callback=None):
         NetworkClient._request(
             "DELETE",

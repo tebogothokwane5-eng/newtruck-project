@@ -305,6 +305,7 @@ ScreenManager:
         MDTopAppBar:
             title: "Truck Owner"
             left_action_items: [["refresh", lambda x: root.load_jobs()]]
+            right_action_items: [["bank", lambda x: root.open_bank_details()]]
 
         # ---------------- MAIN SCROLL AREA ----------------
         ScrollView:
@@ -1455,6 +1456,91 @@ class TruckOwnerHome(MDScreen):
 
     def on_pre_enter(self, *args):
         Clock.schedule_once(self.load_jobs, 0.2)
+
+    # -----------------------------
+    # BANK DETAILS
+    # -----------------------------
+    def open_bank_details(self):
+        from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.textfield import MDTextField
+        from kivymd.uix.button import MDFlatButton, MDRaisedButton
+        from kivymd.uix.boxlayout import MDBoxLayout
+
+        layout = MDBoxLayout(
+            orientation="vertical",
+            spacing="15dp",
+            padding="10dp",
+            size_hint_y=None
+        )
+        layout.bind(minimum_height=layout.setter("height"))
+
+        bank_code_input = MDTextField(hint_text="Bank Code (e.g. 058)")
+        account_number_input = MDTextField(hint_text="Account Number")
+        account_name_input = MDTextField(hint_text="Account Holder Name")
+
+        layout.add_widget(bank_code_input)
+        layout.add_widget(account_number_input)
+        layout.add_widget(account_name_input)
+
+        self.dialog = MDDialog(
+            title="Bank Details",
+            type="custom",
+            content_cls=layout,
+            buttons=[
+                MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss()),
+                MDRaisedButton(
+                    text="SAVE",
+                    on_release=lambda x: self.submit_bank_details(
+                        bank_code_input.text,
+                        account_number_input.text,
+                        account_name_input.text
+                    )
+                ),
+            ],
+        )
+        self.dialog.open()
+
+    def submit_bank_details(self, bank_code, account_number, account_name):
+        from app.utils.network import NetworkClient
+
+        bank_code = bank_code.strip()
+        account_number = account_number.strip()
+        account_name = account_name.strip()
+
+        if not bank_code or not account_number or not account_name:
+            toast("All fields are required")
+            return
+
+        app = MDApp.get_running_app()
+        token = getattr(app, "current_user", {}).get("token")
+
+        if not token:
+            toast("Please login again")
+            return
+
+        headers = {"Authorization": f"Bearer {token}"}
+        payload = {
+            "bank_code": bank_code,
+            "bank_account_number": account_number,
+            "bank_account_name": account_name
+        }
+
+        NetworkClient.put(
+            f"{API_URL}/auth/bank-details",
+            json=payload,
+            headers=headers,
+            callback=self.on_bank_details_saved
+        )
+
+    def on_bank_details_saved(self, response, error=None):
+        def ui(dt):
+            if error or response is None or response.status_code != 200:
+                toast("Failed to save bank details")
+                return
+            toast("Bank details saved successfully")
+            if hasattr(self, "dialog") and self.dialog:
+                self.dialog.dismiss()
+        Clock.schedule_once(ui)
 
     # -----------------------------
     # LOAD JOBS
