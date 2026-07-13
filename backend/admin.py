@@ -146,10 +146,13 @@ def get_user_by_id(user_id: int, db: Session = Depends(get_db), current_user: Us
 
     applications = db.query(JobApplication).filter(JobApplication.truck_owner_id == user_id).all()
     documents = []
+
+    if user.document:
+        documents.append({"type": "Registration Document", "url": user.document})
+
     for app in applications:
         if app.truck_pack:
-            filename = os.path.basename(app.truck_pack)
-            documents.append(f"{BASE_URL}/jobs/admin/uploads/truck_packs/{filename}")
+            documents.append({"type": f"Truck Pack (App {app.id})", "url": app.truck_pack})
 
     return {
         "id": user.id,
