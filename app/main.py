@@ -1309,13 +1309,10 @@ class ContractorHome(MDScreen):
                 for job in jobs:
                     title = job.get("title", "Untitled")
                     description = job.get("description", "")
-
                     status_val = str(job.get("status", "pending")).lower().strip()
                     is_active = (status_val == "pending")
-
                     applicants = int(job.get("applicant_count") or 0)
                     limit = int(job.get("target_limit") or 0)
-
                     app_text = f"{applicants}/{limit} Applicants"
                     display_status = "OPEN" if is_active else "CLOSED"
 
@@ -1328,40 +1325,28 @@ class ContractorHome(MDScreen):
                     # 🔥 CLICK JOB → OPEN TRUCK PACK
                     item.bind(on_release=lambda inst, job=job: self.open_truck_pack(job))
 
-                    # ✅ STATUS BUTTON
-                    # ✅ ACTION ICONS (status + assign, side-by-side)
-                    icon_row = MDBoxLayout(
-                        orientation="horizontal",
-                        size_hint=(None, None),
-                        size=("120dp", "48dp"),
-                        spacing="16dp",
-                        pos_hint={"center_y": 0.5}
-                    )
-
-                    status_btn = MDIconButton(
+                    # ✅ ACTION ICONS (status + assign, side-by-side on the right)
+                    status_btn = IconRightWidget(
                         icon="lock-open-outline" if is_active else "lock",
-                        theme_icon_color="Custom",
-                        icon_color=(0, 0.7, 0, 1) if is_active else (0.8, 0, 0, 1),
+                        theme_text_color="Custom",
+                        text_color=(0, 0.7, 0, 1) if is_active else (0.8, 0, 0, 1),
                     )
                     status_btn.bind(
                         on_release=lambda inst, j=job, s=status_val: self.toggle_job(j, s)
                     )
-                    icon_row.add_widget(status_btn)
+                    item.add_widget(status_btn)
 
                     applications = job.get("applications", [])
                     if applications:
                         app_id = applications[0].get("application_id")
-                        assign_icon = MDIconButton(icon="map-marker-plus")
+                        assign_icon = IconRightWidget(icon="map-marker-plus")
                         assign_icon.bind(
                             on_release=lambda inst, app_id=app_id: self.assign_order_popup(app_id)
                         )
-                        icon_row.add_widget(assign_icon)
-
-                    item.add_widget(icon_row)
-                    self.ids.jobs_list.add_widget(item)
+                        item.ids._right_container.spacing = "12dp"
+                        item.add_widget(assign_icon)
 
                     self.ids.jobs_list.add_widget(item)
-
             except Exception as e:
                 print("UI error:", e)
                 toast("Error displaying jobs")
