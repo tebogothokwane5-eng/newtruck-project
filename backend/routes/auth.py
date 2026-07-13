@@ -146,6 +146,10 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
         if not verify_password(data.password, user.password):
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
+        role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
+        if role_value != "admin" and not user.is_active:
+            raise HTTPException(status_code=403, detail="Account pending approval")
+
         access_token = create_access_token(
             data={"sub": user.username},
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
