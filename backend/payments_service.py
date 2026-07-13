@@ -103,3 +103,69 @@ def initiate_paypal(amount: float):
         raise HTTPException(status_code=400, detail=response.text)
 
     return response.json()
+
+# ==============================
+# PAYSTACK PAYOUTS (TRANSFERS)
+# ==============================
+def create_transfer_recipient(account_number: str, bank_code: str, account_name: str):
+    """
+    Register a truck owner's bank account with Paystack as a transfer recipient.
+    Returns the recipient_code needed to send them money.
+    """
+    if not PAYSTACK_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Missing PAYSTACK_SECRET_KEY")
+
+    url = "https://api.paystack.co/transferrecipient"
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "type": "nuban",
+        "name": account_name,
+        "account_number": account_number,
+        "bank_code": bank_code,
+        "currency": "ZAR"
+    }
+
+    response = requests.post(url, json=data, headers=headers)
+
+    if response.status_code not in [200, 201]:
+        return {
+            "error": True,
+            "status": response.status_code,
+            "message": response.text
+        }
+
+    return response.json()
+
+
+def initiate_payout(recipient_code: str, amount: float, reason: str = "Job payout"):
+    """
+    Send money to a previously registered transfer recipient.
+    """
+    if not PAYSTACK_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Missing PAYSTACK_SECRET_KEY")
+
+    url = "https://api.paystack.co/transfer"
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "source": "balance",
+        "amount": int(amount * 100),
+        "recipient": recipient_code,
+        "reason": reason
+    }
+
+    response = requests.post(url, json=data, headers=headers)
+
+    if response.status_code not in [200, 201]:
+        return {
+            "error": True,
+            "status": response.status_code,
+            "message": response.text
+        }
+
+    return response.json()

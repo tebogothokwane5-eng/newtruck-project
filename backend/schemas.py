@@ -22,6 +22,12 @@ class UserLogin(BaseModel):
     password: str
 
 
+class BankDetailsUpdate(BaseModel):
+    bank_code: str
+    bank_account_number: str
+    bank_account_name: str
+
+
 class UserOut(BaseModel):
     id: int
     username: str

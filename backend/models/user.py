@@ -42,6 +42,10 @@ class User(Base):
     email = Column(String(120), unique=True, index=True, nullable=False)
 
     phone_no = Column(String(20))
+
+    bank_code = Column(String(20))
+    bank_account_number = Column(String(50))
+    bank_account_name = Column(String(150))
     id_no = Column(String(50))
 
     password = Column(String(255), nullable=False)

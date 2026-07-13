@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from backend.database import get_db
-from backend.models.user import Job, JobApplication, ApplicationStatus
+from backend.models.user import Job, JobApplication, ApplicationStatus, User
 from backend.models.payment import Payment
 
 # ---------------- ROUTER ----------------
@@ -208,3 +208,66 @@ def my_payments(
         }
         for p in payments
     ]
+
+
+# ============================
+# PAYOUT TO TRUCK OWNER (ADMIN ONLY)
+# ============================
+@router.post("/payout/{payment_id}")
+def payout_truck_owner(
+    payment_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_dep())
+):
+    from backend.payments_service import create_transfer_recipient, initiate_payout
+
+    role = getattr(current_user.role, "value", str(current_user.role))
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+
+    payment = db.query(Payment).filter(Payment.id == payment_id).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    if payment.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Payment already {payment.status}")
+
+    truck_owner = db.query(User).filter(User.id == payment.truck_owner_id).first()
+    if not truck_owner:
+        raise HTTPException(status_code=404, detail="Truck owner not found")
+
+    if not all([truck_owner.bank_code, truck_owner.bank_account_number, truck_owner.bank_account_name]):
+        raise HTTPException(status_code=400, detail="Truck owner has not set up bank details")
+
+    # Step 1: Create transfer recipient
+    recipient_res = create_transfer_recipient(
+        account_number=truck_owner.bank_account_number,
+        bank_code=truck_owner.bank_code,
+        account_name=truck_owner.bank_account_name
+    )
+
+    if recipient_res.get("error"):
+        raise HTTPException(status_code=400, detail=recipient_res.get("message"))
+
+    recipient_code = recipient_res["data"]["recipient_code"]
+
+    # Step 2: Initiate payout
+    payout_res = initiate_payout(
+        recipient_code=recipient_code,
+        amount=payment.amount,
+        reason=f"Payout for job {payment.job_id}"
+    )
+
+    if payout_res.get("error"):
+        raise HTTPException(status_code=400, detail=payout_res.get("message"))
+
+    payment.status = "completed"
+    db.commit()
+    db.refresh(payment)
+
+    return {
+        "message": "Payout initiated successfully",
+        "payment_id": payment.id,
+        "status": payment.status,
+        "transfer_details": payout_res
+    }

@@ -14,7 +14,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from backend.database import get_db
 from backend.models.user import User
-from backend.schemas import UserLogin
+from backend.schemas import UserLogin, BankDetailsUpdate
 from backend.utils.email import send_email
 from backend.utils.security import hash_password
 from backend.utils.storage import upload_file
@@ -210,3 +210,26 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+# -------------------------
+# BANK DETAILS
+# -------------------------
+@router.put("/bank-details")
+def update_bank_details(
+    data: BankDetailsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    current_user.bank_code = data.bank_code
+    current_user.bank_account_number = data.bank_account_number
+    current_user.bank_account_name = data.bank_account_name
+
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Bank details updated successfully",
+        "bank_code": current_user.bank_code,
+        "bank_account_number": current_user.bank_account_number,
+        "bank_account_name": current_user.bank_account_name
+    }
