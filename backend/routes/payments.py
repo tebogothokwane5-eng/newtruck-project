@@ -271,3 +271,49 @@ def payout_truck_owner(
         "status": payment.status,
         "transfer_details": payout_res
     }
+
+
+# ============================
+# PAYSTACK WEBHOOK
+# ============================
+import hmac
+import hashlib
+import os
+from fastapi import Request
+
+@router.post("/webhook/paystack")
+async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
+    PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
+
+    if not PAYSTACK_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Missing PAYSTACK_SECRET_KEY")
+
+    body = await request.body()
+    signature = request.headers.get("x-paystack-signature")
+
+    expected_signature = hmac.new(
+        PAYSTACK_SECRET_KEY.encode("utf-8"),
+        body,
+        hashlib.sha512
+    ).hexdigest()
+
+    if not signature or not hmac.compare_digest(expected_signature, signature):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    payload = await request.json()
+    event = payload.get("event")
+    data = payload.get("data", {})
+
+    print("🔔 PAYSTACK WEBHOOK EVENT:", event)
+
+    if event == "charge.success":
+        reference = data.get("reference")
+
+        payment = db.query(Payment).filter(Payment.reference == reference).first()
+
+        if payment and payment.status != "completed":
+            payment.status = "completed"
+            db.commit()
+            print(f"✅ Payment {payment.id} marked completed via webhook")
+
+    return {"status": "received"}
