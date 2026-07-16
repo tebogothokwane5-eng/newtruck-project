@@ -45,14 +45,36 @@ def get_all_users_alias(db: Session = Depends(get_db), current_user: User = Depe
     return get_all_users(db, current_user)
 
 @router.put("/users/{user_id}/approve")
-def approve_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+def approve_user(user_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
     user.is_active = True
     db.commit()
     db.refresh(user)
-    return {"detail": "User approved"}
+
+    subject = "Your account has been approved"
+    body = f"Hello {user.username},\n\nGreat news! Your account has been approved. You can now log in to Truckify.\n\nRegards,\nTruckify Team"
+    background_tasks.add_task(send_email, user.email, subject, body)
+
+    return {"detail": "User approved and notification sent"}
+
+@router.put("/users/{user_id}/reject")
+def reject_user(user_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = False
+    db.commit()
+    db.refresh(user)
+
+    subject = "Your account application was not approved"
+    body = f"Hello {user.username},\n\nWe regret to inform you that your account application has been rejected after review.\n\nRegards,\nTruckify Team"
+    background_tasks.add_task(send_email, user.email, subject, body)
+
+    return {"detail": "User rejected and notification sent"}
 
 @router.put("/users/{user_id}/evaluate")
 def evaluate_user(user_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(admin_required)):

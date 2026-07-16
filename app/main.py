@@ -1343,7 +1343,7 @@ class ContractorHome(MDScreen):
                         assign_icon.bind(
                             on_release=lambda inst, app_id=app_id: self.assign_order_popup(app_id)
                         )
-                        item.ids._right_container.spacing = "0.1dp"
+                        item.ids._right_container.spacing = "0dp"
                         item.add_widget(assign_icon)
 
                     self.ids.jobs_list.add_widget(item)

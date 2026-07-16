@@ -1,6 +1,6 @@
 # backend/routes/auth.py
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse
 import os
 import time
@@ -97,8 +97,8 @@ def register(
         try:
             send_email(
                 to_email=new_user.email,
-                subject="Welcome to Trucking Trust",
-                body=f"Hi {new_user.username},\n\nYour registration was successful!"
+                subject="Application received - under verification",
+                body=f"Hi {new_user.username},\n\nThank you for registering with Truckify. Your account and documents are currently under verification. You will receive another email once your account has been reviewed.\n\nRegards,\nTruckify Team"
             )
         except Exception as e:
             print("EMAIL ERROR:", e)
