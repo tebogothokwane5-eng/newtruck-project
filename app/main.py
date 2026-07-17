@@ -208,66 +208,90 @@ ScreenManager:
             md_bg_color: 0.1, 0.1, 0.1, 1
             right_action_items: [["logout", lambda x: app.logout()]]
 
-        # ---------------- CONTENT ----------------
-        MDBoxLayout:
-            orientation: "vertical"
-            padding: "12dp"
-            spacing: "10dp"
+        # ---------------- SCROLLABLE CONTENT ----------------
+        ScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
 
-            # ================= PAYMENTS PANEL =================
-            MDCard:
+            MDBoxLayout:
+                orientation: "vertical"
+                padding: "12dp"
+                spacing: "10dp"
                 size_hint_y: None
-                height: "140dp"
-                padding: "10dp"
-                radius: [12]
-                md_bg_color: 0.12, 0.12, 0.12, 1
+                height: self.minimum_height
 
-                MDBoxLayout:
-                    orientation: "vertical"
-                    spacing: "8dp"
-
-                    MDLabel:
-                        text: "Payments"
-                        theme_text_color: "Custom"
-                        text_color: 1, 1, 1, 1
-                        font_style: "H6"
-
-                    MDLabel:
-                        text: "Select payment method for completed jobs"
-                        theme_text_color: "Custom"
-                        text_color: 0.7, 0.7, 0.7, 1
-                        font_size: "12sp"
+                # ================= PAYMENTS PANEL =================
+                MDCard:
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: "10dp"
+                    radius: [12]
+                    md_bg_color: 0.12, 0.12, 0.12, 1
 
                     MDBoxLayout:
-                        spacing: "10dp"
+                        orientation: "vertical"
+                        spacing: "8dp"
+                        size_hint_y: None
+                        height: self.minimum_height
 
-                        MDRaisedButton:
-                            text: "Paystack"
-                            md_bg_color: 0.2, 0.6, 1, 1
-                            on_release: root.open_paystack()
+                        MDLabel:
+                            text: "Payments"
+                            theme_text_color: "Custom"
+                            text_color: 1, 1, 1, 1
+                            font_style: "H6"
+                            size_hint_y: None
+                            height: self.texture_size[1]
 
-                        MDRaisedButton:
-                            text: "PayPal"
-                            md_bg_color: 1, 0.6, 0.2, 1
-                            on_release: root.open_paypal()
+                        MDLabel:
+                            text: "Select payment method for completed jobs"
+                            theme_text_color: "Custom"
+                            text_color: 0.7, 0.7, 0.7, 1
+                            font_size: "12sp"
+                            size_hint_y: None
+                            height: self.texture_size[1]
 
-                        MDRaisedButton:
-                            text: "Check Status"
-                            md_bg_color: 0.3, 0.8, 0.4, 1
-                            on_release: root.check_payment_status()
+                        MDBoxLayout:
+                            orientation: "vertical"
+                            spacing: "8dp"
+                            size_hint_y: None
+                            height: self.minimum_height
 
-            # ================= JOBS HEADER =================
-            MDLabel:
-                text: "Your Jobs"
-                theme_text_color: "Custom"
-                text_color: 1, 1, 1, 1
-                font_style: "H6"
-                size_hint_y: None
-                height: self.texture_size[1]
+                            MDRaisedButton:
+                                text: "Paystack"
+                                size_hint_x: 1
+                                md_bg_color: 0.2, 0.6, 1, 1
+                                on_release: root.open_paystack()
 
-            ScrollView:
+                            MDRaisedButton:
+                                text: "PayPal"
+                                size_hint_x: 1
+                                md_bg_color: 1, 0.6, 0.2, 1
+                                on_release: root.open_paypal()
+
+                            MDRaisedButton:
+                                text: "Check Status"
+                                size_hint_x: 1
+                                md_bg_color: 0.3, 0.8, 0.4, 1
+                                on_release: root.check_payment_status()
+
+                # ================= JOBS HEADER =================
+                MDLabel:
+                    text: "Your Jobs"
+                    theme_text_color: "Custom"
+                    text_color: 1, 1, 1, 1
+                    font_style: "H6"
+                    size_hint_y: None
+                    height: self.texture_size[1]
+
                 MDList:
                     id: jobs_list
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                # Spacer so last card isn't hidden behind bottom bar
+                Widget:
+                    size_hint_y: None
+                    height: "80dp"
 
         # ---------------- BOTTOM ACTION BAR ----------------
         MDBoxLayout:
@@ -294,6 +318,7 @@ ScreenManager:
                 size_hint_x: 1
                 md_bg_color: 0.8, 0.4, 0.2, 1
                 on_release: root.load_applicants()
+
 
 
 # ---------------- TRUCK OWNER ----------------
@@ -1286,16 +1311,12 @@ class ContractorHome(MDScreen):
     from kivy.clock import Clock
 
     def on_jobs_loaded(self, response, error=None):
-
         def update_ui(dt):
-
-            # 🔴 HANDLE NETWORK ERROR
             if error:
                 print("Network error:", error)
                 toast("Network error")
                 return
 
-            # 🔴 HANDLE BAD RESPONSE
             if response is None or response.status_code != 200:
                 print("Bad response:", response)
                 toast("Failed to load jobs")
@@ -1303,53 +1324,101 @@ class ContractorHome(MDScreen):
 
             try:
                 self.ids.jobs_list.clear_widgets()
-
                 jobs = response.json()
 
                 for job in jobs:
-                    title = job.get("title", "Untitled")
-                    description = job.get("description", "")
-                    status_val = str(job.get("status", "pending")).lower().strip()
-                    is_active = (status_val == "pending")
-                    applicants = int(job.get("applicant_count") or 0)
-                    limit = int(job.get("target_limit") or 0)
-                    app_text = f"{applicants}/{limit} Applicants"
-                    display_status = "OPEN" if is_active else "CLOSED"
+                    self._add_contractor_job_card(job)
 
-                    item = ThreeLineAvatarIconListItem(
-                        text=f"{title} ({app_text})",
-                        secondary_text=description,
-                        tertiary_text=f"STATUS: {display_status}",
-                    )
-
-                    # 🔥 CLICK JOB → OPEN TRUCK PACK
-                    item.bind(on_release=lambda inst, job=job: self.open_truck_pack(job))
-
-                    # ✅ ACTION ICONS (status + assign, side-by-side on the right)
-                    status_btn = IconRightWidget(
-                        icon="lock-open-outline" if is_active else "lock",
-                        theme_text_color="Custom",
-                        text_color=(0, 0.7, 0, 1) if is_active else (0.8, 0, 0, 1),
-                    )
-                    status_btn.bind(
-                        on_release=lambda inst, j=job, s=status_val: self.toggle_job(j, s)
-                    )
-                    item.add_widget(status_btn)
-
-                    applications = job.get("applications", [])
-                    if applications:
-                        app_id = applications[0].get("application_id")
-                        assign_icon = IconRightWidget(icon="map-marker-plus")
-                        assign_icon.bind(
-                            on_release=lambda inst, app_id=app_id: self.assign_order_popup(app_id)
-                        )
-                        item.ids._right_container.spacing = "0dp"
-                        item.add_widget(assign_icon)
-
-                    self.ids.jobs_list.add_widget(item)
             except Exception as e:
                 print("UI error:", e)
                 toast("Error displaying jobs")
+
+        Clock.schedule_once(update_ui)
+
+    def _add_contractor_job_card(self, job):
+        from kivymd.uix.card import MDCard
+        from kivymd.uix.boxlayout import MDBoxLayout
+        from kivymd.uix.button import MDIconButton
+        from kivymd.uix.label import MDLabel
+        from functools import partial
+
+        title = job.get("title", "Untitled")
+        description = job.get("description", "") or "No description"
+        status_val = str(job.get("status", "pending")).lower().strip()
+        is_active = (status_val == "pending")
+        applicants = int(job.get("applicant_count") or 0)
+        limit = int(job.get("target_limit") or 0)
+        display_status = "OPEN" if is_active else "CLOSED"
+
+        card = MDCard(
+            orientation="vertical",
+            padding="12dp",
+            spacing="8dp",
+            size_hint_y=None,
+            elevation=3,
+            radius=[15]
+        )
+        card.bind(minimum_height=card.setter("height"))
+
+        card.add_widget(MDLabel(
+            text=title,
+            font_style="H6",
+            size_hint_y=None,
+            height="30dp"
+        ))
+
+        card.add_widget(MDLabel(
+            text=f"{applicants}/{limit} Applicants  •  STATUS: {display_status}",
+            theme_text_color="Secondary",
+            size_hint_y=None,
+            height="22dp",
+            font_size="12sp"
+        ))
+
+        desc_label = MDLabel(
+            text=description,
+            size_hint_y=None,
+            theme_text_color="Secondary"
+        )
+        desc_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        desc_label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+        card.add_widget(desc_label)
+
+        btn_row = MDBoxLayout(
+            orientation="horizontal",
+            spacing="16dp",
+            size_hint_y=None,
+            height="48dp"
+        )
+
+        status_btn = MDIconButton(
+            icon="lock-open-outline" if is_active else "lock",
+            theme_icon_color="Custom",
+            icon_color=(0, 0.7, 0, 1) if is_active else (0.8, 0, 0, 1),
+        )
+        status_btn.bind(
+            on_release=lambda inst, j=job, s=status_val: self.toggle_job(j, s)
+        )
+        btn_row.add_widget(status_btn)
+
+        applications = job.get("applications", [])
+        if applications:
+            app_id = applications[0].get("application_id")
+            assign_icon = MDIconButton(icon="map-marker-plus")
+            assign_icon.bind(
+                on_release=lambda inst, app_id=app_id: self.assign_order_popup(app_id)
+            )
+            btn_row.add_widget(assign_icon)
+
+        card.add_widget(btn_row)
+
+        card.bind(on_release=partial(self._contractor_card_touch, job))
+
+        self.ids.jobs_list.add_widget(card)
+
+    def _contractor_card_touch(self, job, *args):
+        self.open_truck_pack(job)
+
 
         # ✅ ALWAYS RUN UI ON MAIN THREAD
         Clock.schedule_once(update_ui)
