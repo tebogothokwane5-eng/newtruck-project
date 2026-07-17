@@ -48,8 +48,6 @@ def initiate_paystack(email: str, amount: float):
 # PAYPAL TOKEN
 # ==============================
 def get_paypal_token():
-    print(f"🔍 PAYPAL_CLIENT_ID length: {len(PAYPAL_CLIENT_ID) if PAYPAL_CLIENT_ID else 0}, repr: {repr(PAYPAL_CLIENT_ID[:10]) if PAYPAL_CLIENT_ID else None}...{repr(PAYPAL_CLIENT_ID[-5:]) if PAYPAL_CLIENT_ID else None}")
-    print(f"🔍 PAYPAL_SECRET length: {len(PAYPAL_SECRET) if PAYPAL_SECRET else 0}, repr: {repr(PAYPAL_SECRET[:5]) if PAYPAL_SECRET else None}...{repr(PAYPAL_SECRET[-5:]) if PAYPAL_SECRET else None}")
     if not PAYPAL_CLIENT_ID or not PAYPAL_SECRET:
         raise HTTPException(status_code=500, detail="Missing PayPal credentials")
 
