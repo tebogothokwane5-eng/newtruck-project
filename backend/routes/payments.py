@@ -1,4 +1,5 @@
 # ---------------- IMPORTS ----------------
+import requests
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -315,5 +316,66 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
             payment.status = "completed"
             db.commit()
             print(f"✅ Payment {payment.id} marked completed via webhook")
+
+    return {"status": "received"}
+
+
+# ============================
+# PAYPAL WEBHOOK
+# ============================
+@router.post("/webhook/paypal")
+async def paypal_webhook(request: Request, db: Session = Depends(get_db)):
+    from backend.payments_service import get_paypal_token, PAYPAL_BASE
+
+    PAYPAL_WEBHOOK_ID = os.getenv("PAYPAL_WEBHOOK_ID")
+
+    if not PAYPAL_WEBHOOK_ID:
+        raise HTTPException(status_code=500, detail="Missing PAYPAL_WEBHOOK_ID")
+
+    body = await request.body()
+    headers = request.headers
+
+    access_token = get_paypal_token()
+
+    verify_payload = {
+        "auth_algo": headers.get("paypal-auth-algo"),
+        "cert_url": headers.get("paypal-cert-url"),
+        "transmission_id": headers.get("paypal-transmission-id"),
+        "transmission_sig": headers.get("paypal-transmission-sig"),
+        "transmission_time": headers.get("paypal-transmission-time"),
+        "webhook_id": PAYPAL_WEBHOOK_ID,
+        "webhook_event": await request.json()
+    }
+
+    verify_res = requests.post(
+        f"{PAYPAL_BASE}/v1/notifications/verify-webhook-signature",
+        json=verify_payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    verify_data = verify_res.json()
+
+    if verify_data.get("verification_status") != "SUCCESS":
+        raise HTTPException(status_code=401, detail="Invalid PayPal webhook signature")
+
+    payload = verify_payload["webhook_event"]
+    event_type = payload.get("event_type")
+    resource = payload.get("resource", {})
+
+    print("🔔 PAYPAL WEBHOOK EVENT:", event_type)
+
+    if event_type in ["CHECKOUT.ORDER.COMPLETED", "PAYMENT.CAPTURE.COMPLETED"]:
+        order_id = resource.get("id") or resource.get("supplementary_data", {}).get("related_ids", {}).get("order_id")
+
+        if order_id:
+            payment = db.query(Payment).filter(Payment.reference == order_id).first()
+
+            if payment and payment.status != "completed":
+                payment.status = "completed"
+                db.commit()
+                print(f"✅ Payment {payment.id} marked completed via PayPal webhook")
 
     return {"status": "received"}
