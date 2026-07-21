@@ -829,52 +829,72 @@ class ContractorHome(MDScreen):
             callback=handle_response
         )
     def open_payments_menu(self):
-        from kivymd.uix.dialog import MDDialog
-        from kivymd.uix.button import MDFlatButton, MDRaisedButton
+        from kivy.uix.modalview import ModalView
+        from kivymd.uix.card import MDCard
         from kivymd.uix.boxlayout import MDBoxLayout
+        from kivymd.uix.button import MDRaisedButton, MDFlatButton
+        from kivymd.uix.label import MDLabel
 
-        layout = MDBoxLayout(
-            orientation="vertical",
-            spacing="12dp",
-            padding="10dp",
-            size_hint_y=None
+        modal = ModalView(
+            size_hint=(0.85, None),
+            height="300dp",
+            background_color=(0, 0, 0, 0.6)
         )
-        layout.bind(minimum_height=layout.setter("height"))
+
+        card = MDCard(
+            orientation="vertical",
+            padding="16dp",
+            spacing="10dp",
+            radius=[16],
+            md_bg_color=(0.14, 0.14, 0.14, 1),
+            size_hint=(1, 1)
+        )
+
+        card.add_widget(MDLabel(
+            text="Payments",
+            font_style="H6",
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1),
+            halign="center",
+            size_hint_y=None,
+            height="30dp"
+        ))
 
         paystack_btn = MDRaisedButton(
             text="Paystack",
             md_bg_color=(0.2, 0.6, 1, 1),
             size_hint_x=1
         )
-        paystack_btn.bind(on_release=lambda x: (self.dialog.dismiss(), self.open_paystack()))
+        paystack_btn.bind(on_release=lambda x: (modal.dismiss(), self.open_paystack()))
 
         paypal_btn = MDRaisedButton(
             text="PayPal",
             md_bg_color=(1, 0.6, 0.2, 1),
             size_hint_x=1
         )
-        paypal_btn.bind(on_release=lambda x: (self.dialog.dismiss(), self.open_paypal()))
+        paypal_btn.bind(on_release=lambda x: (modal.dismiss(), self.open_paypal()))
 
         status_btn = MDRaisedButton(
             text="Check Status",
             md_bg_color=(0.3, 0.8, 0.4, 1),
             size_hint_x=1
         )
-        status_btn.bind(on_release=lambda x: (self.dialog.dismiss(), self.check_payment_status()))
+        status_btn.bind(on_release=lambda x: (modal.dismiss(), self.check_payment_status()))
 
-        layout.add_widget(paystack_btn)
-        layout.add_widget(paypal_btn)
-        layout.add_widget(status_btn)
-
-        self.dialog = MDDialog(
-            title="Payments",
-            type="custom",
-            content_cls=layout,
-            buttons=[
-                MDFlatButton(text="CLOSE", on_release=lambda x: self.dialog.dismiss())
-            ],
+        close_btn = MDFlatButton(
+            text="CLOSE",
+            size_hint_x=1
         )
-        self.dialog.open()
+        close_btn.bind(on_release=lambda x: modal.dismiss())
+
+        card.add_widget(paystack_btn)
+        card.add_widget(paypal_btn)
+        card.add_widget(status_btn)
+        card.add_widget(close_btn)
+
+        modal.add_widget(card)
+        modal.open()
+
 
 
     def open_paystack(self):
