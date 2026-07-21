@@ -223,56 +223,36 @@ ScreenManager:
                 # ================= PAYMENTS PANEL =================
                 MDCard:
                     size_hint_y: None
-                    height: self.minimum_height
+                    height: "72dp"
                     padding: "10dp"
                     radius: [12]
                     md_bg_color: 0.12, 0.12, 0.12, 1
 
                     MDBoxLayout:
-                        orientation: "vertical"
-                        spacing: "8dp"
-                        size_hint_y: None
-                        height: self.minimum_height
-
-                        MDLabel:
-                            text: "Payments"
-                            theme_text_color: "Custom"
-                            text_color: 1, 1, 1, 1
-                            font_style: "H6"
-                            size_hint_y: None
-                            height: self.texture_size[1]
-
-                        MDLabel:
-                            text: "Select payment method for completed jobs"
-                            theme_text_color: "Custom"
-                            text_color: 0.7, 0.7, 0.7, 1
-                            font_size: "12sp"
-                            size_hint_y: None
-                            height: self.texture_size[1]
+                        orientation: "horizontal"
+                        spacing: "10dp"
 
                         MDBoxLayout:
                             orientation: "vertical"
-                            spacing: "8dp"
-                            size_hint_y: None
-                            height: self.minimum_height
 
-                            MDRaisedButton:
-                                text: "Paystack"
-                                size_hint_x: 1
-                                md_bg_color: 0.2, 0.6, 1, 1
-                                on_release: root.open_paystack()
+                            MDLabel:
+                                text: "Payments"
+                                theme_text_color: "Custom"
+                                text_color: 1, 1, 1, 1
+                                font_style: "H6"
 
-                            MDRaisedButton:
-                                text: "PayPal"
-                                size_hint_x: 1
-                                md_bg_color: 1, 0.6, 0.2, 1
-                                on_release: root.open_paypal()
+                            MDLabel:
+                                text: "Tap to pay a completed job"
+                                theme_text_color: "Custom"
+                                text_color: 0.7, 0.7, 0.7, 1
+                                font_size: "12sp"
 
-                            MDRaisedButton:
-                                text: "Check Status"
-                                size_hint_x: 1
-                                md_bg_color: 0.3, 0.8, 0.4, 1
-                                on_release: root.check_payment_status()
+                        MDIconButton:
+                            icon: "bank"
+                            theme_icon_color: "Custom"
+                            icon_color: 0.2, 0.6, 1, 1
+                            pos_hint: {"center_y": 0.5}
+                            on_release: root.open_payments_menu()
 
                 # ================= JOBS HEADER =================
                 MDLabel:
@@ -848,6 +828,54 @@ class ContractorHome(MDScreen):
             headers=headers,
             callback=handle_response
         )
+    def open_payments_menu(self):
+        from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.button import MDFlatButton, MDRaisedButton
+        from kivymd.uix.boxlayout import MDBoxLayout
+
+        layout = MDBoxLayout(
+            orientation="vertical",
+            spacing="12dp",
+            padding="10dp",
+            size_hint_y=None
+        )
+        layout.bind(minimum_height=layout.setter("height"))
+
+        paystack_btn = MDRaisedButton(
+            text="Paystack",
+            md_bg_color=(0.2, 0.6, 1, 1),
+            size_hint_x=1
+        )
+        paystack_btn.bind(on_release=lambda x: (self.dialog.dismiss(), self.open_paystack()))
+
+        paypal_btn = MDRaisedButton(
+            text="PayPal",
+            md_bg_color=(1, 0.6, 0.2, 1),
+            size_hint_x=1
+        )
+        paypal_btn.bind(on_release=lambda x: (self.dialog.dismiss(), self.open_paypal()))
+
+        status_btn = MDRaisedButton(
+            text="Check Status",
+            md_bg_color=(0.3, 0.8, 0.4, 1),
+            size_hint_x=1
+        )
+        status_btn.bind(on_release=lambda x: (self.dialog.dismiss(), self.check_payment_status()))
+
+        layout.add_widget(paystack_btn)
+        layout.add_widget(paypal_btn)
+        layout.add_widget(status_btn)
+
+        self.dialog = MDDialog(
+            title="Payments",
+            type="custom",
+            content_cls=layout,
+            buttons=[
+                MDFlatButton(text="CLOSE", on_release=lambda x: self.dialog.dismiss())
+            ],
+        )
+        self.dialog.open()
+
 
     def open_paystack(self):
         self._get_completed_jobs_for_payment(
