@@ -1388,6 +1388,7 @@ class ContractorHome(MDScreen):
         from kivymd.uix.boxlayout import MDBoxLayout
         from kivymd.uix.button import MDIconButton
         from kivymd.uix.label import MDLabel
+        from kivy.uix.scrollview import ScrollView
         from functools import partial
 
         title = job.get("title", "Untitled")
@@ -1397,53 +1398,92 @@ class ContractorHome(MDScreen):
         applicants = int(job.get("applicant_count") or 0)
         limit = int(job.get("target_limit") or 0)
         display_status = "OPEN" if is_active else "CLOSED"
+        status_color = (0.2, 0.85, 0.4, 1) if is_active else (0.9, 0.3, 0.3, 1)
+
+        def wrap_label(label):
+            label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+            label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+            return label
 
         card = MDCard(
             orientation="vertical",
-            padding="12dp",
+            padding="14dp",
             spacing="8dp",
-            size_hint_y=None,
+            size_hint=(1, None),
             elevation=3,
-            radius=[15]
+            radius=[16],
+            md_bg_color=(0.13, 0.13, 0.13, 1)
         )
-        title_label = MDLabel(
+        card.bind(minimum_height=card.setter("height"))
+
+        # ---- TITLE ----
+        title_label = wrap_label(MDLabel(
             text=title,
             font_style="H6",
-            size_hint_y=None
-        )
-        title_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        title_label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+            bold=True,
+            size_hint=(1, None),
+        ))
         card.add_widget(title_label)
 
-        meta_label = MDLabel(
-            text=f"{applicants}/{limit} Applicants  •  STATUS: {display_status}",
-            theme_text_color="Secondary",
-            size_hint_y=None,
-            font_size="12sp"
+        # ---- STATUS + APPLICANTS ROW ----
+        status_row = MDBoxLayout(
+            orientation="horizontal",
+            size_hint=(1, None),
+            height="26dp",
+            spacing="8dp"
         )
-        meta_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        meta_label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
-        card.add_widget(meta_label)
 
-        desc_label = MDLabel(
-            text=description,
-            size_hint_y=None,
-            theme_text_color="Secondary"
+        status_chip = MDLabel(
+            text=display_status,
+            size_hint=(None, None),
+            size=("80dp", "24dp"),
+            halign="left",
+            theme_text_color="Custom",
+            text_color=status_color,
+            font_size="12sp",
+            bold=True,
         )
-        desc_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-        desc_label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+        status_row.add_widget(status_chip)
+
+        applicants_label = MDLabel(
+            text=f"{applicants}/{limit} Applicants",
+            theme_text_color="Secondary",
+            font_size="12sp",
+            size_hint=(1, None),
+            height="24dp",
+            halign="right"
+        )
+        status_row.add_widget(applicants_label)
+        card.add_widget(status_row)
+
+        # ---- DIVIDER ----
+        card.add_widget(MDBoxLayout(
+            size_hint=(1, None),
+            height="1dp",
+            md_bg_color=(1, 1, 1, 0.08)
+        ))
+
+        # ---- DESCRIPTION ----
+        desc_label = wrap_label(MDLabel(
+            text=description,
+            theme_text_color="Secondary",
+            size_hint=(1, None),
+        ))
         card.add_widget(desc_label)
+
+        # ---- ACTION ICONS (horizontally scrollable) ----
         scroll = ScrollView(
             do_scroll_x=True,
             do_scroll_y=False,
-            size_hint_y=None,
-            height="56dp"
+            size_hint=(1, None),
+            height="52dp",
+            bar_width="0dp"
         )
+
         btn_row = MDBoxLayout(
             orientation="horizontal",
-            spacing="16dp",
-            size_hint_x=None,
-            size_hint_y=None,
+            spacing="12dp",
+            size_hint=(None, None),
             height="48dp"
         )
         btn_row.bind(minimum_width=btn_row.setter("width"))
@@ -1451,28 +1491,26 @@ class ContractorHome(MDScreen):
         status_btn = MDIconButton(
             icon="lock-open-outline" if is_active else "lock",
             theme_icon_color="Custom",
-            icon_color=(0, 0.7, 0, 1) if is_active else (0.8, 0, 0, 1),
+            icon_color=status_color,
         )
-        status_btn.bind(
-            on_release=lambda inst, j=job, s=status_val: self.toggle_job(j, s)
-        )
+        status_btn.bind(on_release=lambda inst, j=job, s=status_val: self.toggle_job(j, s))
         btn_row.add_widget(status_btn)
 
         applications = job.get("applications", [])
         if applications:
             app_id = applications[0].get("application_id")
             assign_icon = MDIconButton(icon="map-marker-plus")
-            assign_icon.bind(
-                on_release=lambda inst, app_id=app_id: self.assign_order_popup(app_id)
-            )
+            assign_icon.bind(on_release=lambda inst, app_id=app_id: self.assign_order_popup(app_id))
             btn_row.add_widget(assign_icon)
 
         scroll.add_widget(btn_row)
         card.add_widget(scroll)
 
         card.bind(on_release=partial(self._contractor_card_touch, job))
-
         self.ids.jobs_list.add_widget(card)
+
+    def _contractor_card_touch(self, job, *args):
+        self.open_truck_pack(job)
 
     def _contractor_card_touch(self, job, *args):
         self.open_truck_pack(job)
