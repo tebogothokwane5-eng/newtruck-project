@@ -1406,22 +1406,24 @@ class ContractorHome(MDScreen):
             elevation=3,
             radius=[15]
         )
-        card.bind(minimum_height=card.setter("height"))
-
-        card.add_widget(MDLabel(
+        title_label = MDLabel(
             text=title,
             font_style="H6",
-            size_hint_y=None,
-            height="30dp"
-        ))
+            size_hint_y=None
+        )
+        title_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        title_label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+        card.add_widget(title_label)
 
-        card.add_widget(MDLabel(
+        meta_label = MDLabel(
             text=f"{applicants}/{limit} Applicants  •  STATUS: {display_status}",
             theme_text_color="Secondary",
             size_hint_y=None,
-            height="22dp",
             font_size="12sp"
-        ))
+        )
+        meta_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+        meta_label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+        card.add_widget(meta_label)
 
         desc_label = MDLabel(
             text=description,
@@ -1431,13 +1433,20 @@ class ContractorHome(MDScreen):
         desc_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
         desc_label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
         card.add_widget(desc_label)
-
+        scroll = ScrollView(
+            do_scroll_x=True,
+            do_scroll_y=False,
+            size_hint_y=None,
+            height="56dp"
+        )
         btn_row = MDBoxLayout(
             orientation="horizontal",
             spacing="16dp",
+            size_hint_x=None,
             size_hint_y=None,
             height="48dp"
         )
+        btn_row.bind(minimum_width=btn_row.setter("width"))
 
         status_btn = MDIconButton(
             icon="lock-open-outline" if is_active else "lock",
@@ -1458,7 +1467,8 @@ class ContractorHome(MDScreen):
             )
             btn_row.add_widget(assign_icon)
 
-        card.add_widget(btn_row)
+        scroll.add_widget(btn_row)
+        card.add_widget(scroll)
 
         card.bind(on_release=partial(self._contractor_card_touch, job))
 
