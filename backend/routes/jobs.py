@@ -44,10 +44,16 @@ def truck_owner_required(user: User):
     if role != "truck_owner":
         raise HTTPException(status_code=403, detail="Truck owner access only")
 
-
 # ✅ FIXED URLS (CRITICAL)
 def truck_pack_url(filename: str):
+    if filename and filename.startswith("http"):
+        return filename
     return f"{BASE_URL}/jobs/uploads/truck_packs/{filename}"
+
+def slip_url(filename: str):
+    if filename and filename.startswith("http"):
+        return filename
+    return f"{BASE_URL}/jobs/uploads/delivery_slips/{filename}"
 
 
 def slip_url(filename: str):
