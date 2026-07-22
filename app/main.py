@@ -139,7 +139,7 @@ ScreenManager:
 
         MDTopAppBar:
             title: "Create Account"
-            left_action_items: [["arrow-left", lambda x: app.login()]]
+            left_action_items: [["arrow-left", lambda x: app.root.__setattr__("current", "login")]]
 
         ScrollView:
             MDBoxLayout:
@@ -358,7 +358,7 @@ ScreenManager:
 
         MDTopAppBar:
             title: "Upload Feedback"
-            left_action_items: [["arrow-left", lambda x: app.go_truck()]]
+            left_action_items: [["arrow-left", lambda x: app.root.__setattr__("current", "truck_owner")]]
 
         ScrollView:
             MDBoxLayout:
