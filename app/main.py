@@ -1512,13 +1512,6 @@ class ContractorHome(MDScreen):
     def _contractor_card_touch(self, job, *args):
         self.open_truck_pack(job)
 
-    def _contractor_card_touch(self, job, *args):
-        self.open_truck_pack(job)
-
-
-        # ✅ ALWAYS RUN UI ON MAIN THREAD
-        Clock.schedule_once(update_ui)
-
     from kivy.clock import Clock
     from kivymd.toast import toast
     from kivymd.app import MDApp
