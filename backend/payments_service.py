@@ -14,22 +14,23 @@ PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
 # ==============================
 # PAYSTACK
 # ==============================
-def initiate_paystack(email: str, amount: float):
+def initiate_paystack(email: str, amount: float, subaccount_code: str = None):
     if not PAYSTACK_SECRET_KEY:
         raise HTTPException(status_code=500, detail="Missing PAYSTACK_SECRET_KEY")
 
     url = "https://api.paystack.co/transaction/initialize"
-
     headers = {
         "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
         "Content-Type": "application/json"
     }
-
     data = {
         "email": email,
         "amount": int(amount * 100),
         "currency": "ZAR"
     }
+
+    if subaccount_code:
+        data["subaccount"] = subaccount_code
 
     response = requests.post(url, json=data, headers=headers)
 
@@ -157,6 +158,42 @@ def initiate_payout(recipient_code: str, amount: float, reason: str = "Job payou
         "amount": int(amount * 100),
         "recipient": recipient_code,
         "reason": reason
+    }
+
+    response = requests.post(url, json=data, headers=headers)
+
+    if response.status_code not in [200, 201]:
+        return {
+            "error": True,
+            "status": response.status_code,
+            "message": response.text
+        }
+
+    return response.json()
+
+
+# ==============================
+# PAYSTACK SUBACCOUNTS (CONTRACTOR PAYOUT ROUTING)
+# ==============================
+def create_paystack_subaccount(business_name: str, bank_code: str, account_number: str, percentage_charge: float = 0):
+    """
+    Create a Paystack subaccount for a contractor.
+    percentage_charge = platform's cut (0 means contractor receives 100% of the payment, minus Paystack's own transaction fee).
+    Returns the subaccount_code needed to route payments to this contractor.
+    """
+    if not PAYSTACK_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Missing PAYSTACK_SECRET_KEY")
+
+    url = "https://api.paystack.co/subaccount"
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "business_name": business_name,
+        "bank_code": bank_code,
+        "account_number": account_number,
+        "percentage_charge": percentage_charge
     }
 
     response = requests.post(url, json=data, headers=headers)

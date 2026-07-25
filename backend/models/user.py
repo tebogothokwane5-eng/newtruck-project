@@ -46,6 +46,7 @@ class User(Base):
     bank_code = Column(String(20))
     bank_account_number = Column(String(50))
     bank_account_name = Column(String(150))
+    paystack_subaccount_code = Column(String(100))
     id_no = Column(String(50))
 
     password = Column(String(255), nullable=False)

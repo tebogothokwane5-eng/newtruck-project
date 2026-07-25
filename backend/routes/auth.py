@@ -233,3 +233,42 @@ def update_bank_details(
         "bank_account_number": current_user.bank_account_number,
         "bank_account_name": current_user.bank_account_name
     }
+
+
+# -------------------------
+# CONTRACTOR PAYSTACK SUBACCOUNT SETUP
+# -------------------------
+@router.post("/setup-subaccount")
+def setup_subaccount(
+    data: BankDetailsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from backend.payments_service import create_paystack_subaccount
+
+    role_value = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    if role_value != "main_contractor":
+        raise HTTPException(status_code=403, detail="Only contractors can set up a payout subaccount")
+
+    result = create_paystack_subaccount(
+        business_name=data.bank_account_name,
+        bank_code=data.bank_code,
+        account_number=data.bank_account_number,
+        percentage_charge=0
+    )
+
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=result.get("message"))
+
+    current_user.bank_code = data.bank_code
+    current_user.bank_account_number = data.bank_account_number
+    current_user.bank_account_name = data.bank_account_name
+    current_user.paystack_subaccount_code = result["data"]["subaccount_code"]
+
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Subaccount created successfully",
+        "subaccount_code": current_user.paystack_subaccount_code
+    }

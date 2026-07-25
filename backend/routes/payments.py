@@ -84,9 +84,11 @@ def initiate_payment(
     db.commit()
     db.refresh(payment)
 
-    # ================= PAYSTACK =================
+
     if method == "paystack":
-        res = initiate_paystack(current_user.email, job.price)
+        if not current_user.paystack_subaccount_code:
+            raise HTTPException(status_code=400, detail="Please set up your payout bank details first")
+        res = initiate_paystack(current_user.email, job.price, subaccount_code=current_user.paystack_subaccount_code)
 
         print("🔵 PAYSTACK RAW RESPONSE:", res)
 
