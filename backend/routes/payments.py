@@ -112,10 +112,11 @@ def initiate_payment(
             "payment_url": res["data"]["authorization_url"],
             "reference": payment.reference
         }
-
     # ================= PAYPAL =================
     elif method == "paypal":
-        res = initiate_paypal(job.price)
+        if not current_user.paypal_email:
+            raise HTTPException(status_code=400, detail="Please set up your PayPal payout email first")
+        res = initiate_paypal(job.price, payee_email=current_user.paypal_email)
 
         print("🟡 PAYPAL RAW RESPONSE:", res)
 

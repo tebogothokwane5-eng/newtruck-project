@@ -72,26 +72,28 @@ def get_paypal_token():
 # ==============================
 # PAYPAL INIT
 # ==============================
-def initiate_paypal(amount: float):
+def initiate_paypal(amount: float, payee_email: str = None):
     access_token = get_paypal_token()
 
     url = f"{PAYPAL_BASE}/v2/checkout/orders"
-
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {access_token}"
     }
 
+    purchase_unit = {
+        "amount": {
+            "currency_code": "USD",
+            "value": str(amount)
+        }
+    }
+
+    if payee_email:
+        purchase_unit["payee"] = {"email_address": payee_email}
+
     data = {
         "intent": "CAPTURE",
-        "purchase_units": [
-            {
-                "amount": {
-                    "currency_code": "USD",
-                    "value": str(amount)
-                }
-            }
-        ],
+        "purchase_units": [purchase_unit],
         "application_context": {
             "return_url": "https://newtruck-project.onrender.com/payments/paypal/success",
             "cancel_url": "https://newtruck-project.onrender.com/payments/paypal/cancel"

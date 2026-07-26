@@ -28,6 +28,10 @@ class BankDetailsUpdate(BaseModel):
     bank_account_name: str
 
 
+class PaypalEmailUpdate(BaseModel):
+    paypal_email: str
+
+
 class UserOut(BaseModel):
     id: int
     username: str

@@ -47,6 +47,7 @@ class User(Base):
     bank_account_number = Column(String(50))
     bank_account_name = Column(String(150))
     paystack_subaccount_code = Column(String(100))
+    paypal_email = Column(String(150))
     id_no = Column(String(50))
 
     password = Column(String(255), nullable=False)

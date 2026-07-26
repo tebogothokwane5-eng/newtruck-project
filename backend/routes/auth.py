@@ -14,7 +14,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from backend.database import get_db
 from backend.models.user import User
-from backend.schemas import UserLogin, BankDetailsUpdate
+from backend.schemas import UserLogin, BankDetailsUpdate, PaypalEmailUpdate
 from backend.utils.email import send_email
 from backend.utils.security import hash_password
 from backend.utils.storage import upload_file
@@ -271,4 +271,27 @@ def setup_subaccount(
     return {
         "message": "Subaccount created successfully",
         "subaccount_code": current_user.paystack_subaccount_code
+    }
+
+
+# -------------------------
+# CONTRACTOR PAYPAL EMAIL SETUP
+# -------------------------
+@router.post("/setup-paypal-payee")
+def setup_paypal_payee(
+    data: PaypalEmailUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    role_value = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    if role_value != "main_contractor":
+        raise HTTPException(status_code=403, detail="Only contractors can set up PayPal payout email")
+
+    current_user.paypal_email = data.paypal_email
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "PayPal payout email set successfully",
+        "paypal_email": current_user.paypal_email
     }
