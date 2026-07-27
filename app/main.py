@@ -837,7 +837,7 @@ class ContractorHome(MDScreen):
 
         modal = ModalView(
             size_hint=(0.85, None),
-            height="300dp",
+            height="380dp",
             background_color=(0, 0, 0, 0.6)
         )
 
@@ -881,6 +881,13 @@ class ContractorHome(MDScreen):
         )
         status_btn.bind(on_release=lambda x: (modal.dismiss(), self.check_payment_status()))
 
+        setup_btn = MDRaisedButton(
+            text="Setup Payout Details",
+            md_bg_color=(0.5, 0.3, 0.9, 1),
+            size_hint_x=1
+        )
+        setup_btn.bind(on_release=lambda x: (modal.dismiss(), self.open_setup_payout()))
+
         close_btn = MDFlatButton(
             text="CLOSE",
             size_hint_x=1
@@ -890,12 +897,212 @@ class ContractorHome(MDScreen):
         card.add_widget(paystack_btn)
         card.add_widget(paypal_btn)
         card.add_widget(status_btn)
+        card.add_widget(setup_btn)
         card.add_widget(close_btn)
 
         modal.add_widget(card)
         modal.open()
 
 
+
+    def open_setup_payout(self):
+        from kivy.uix.modalview import ModalView
+        from kivymd.uix.card import MDCard
+        from kivymd.uix.boxlayout import MDBoxLayout
+        from kivymd.uix.button import MDRaisedButton, MDFlatButton
+        from kivymd.uix.label import MDLabel
+
+        modal = ModalView(
+            size_hint=(0.85, None),
+            height="260dp",
+            background_color=(0, 0, 0, 0.6)
+        )
+
+        card = MDCard(
+            orientation="vertical",
+            padding="16dp",
+            spacing="10dp",
+            radius=[16],
+            md_bg_color=(0.14, 0.14, 0.14, 1),
+            size_hint=(1, 1)
+        )
+
+        card.add_widget(MDLabel(
+            text="Setup Payout Details",
+            font_style="H6",
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1),
+            halign="center",
+            size_hint_y=None,
+            height="30dp"
+        ))
+
+        paystack_btn = MDRaisedButton(
+            text="Paystack Bank Details",
+            md_bg_color=(0.2, 0.6, 1, 1),
+            size_hint_x=1
+        )
+        paystack_btn.bind(on_release=lambda x: (modal.dismiss(), self.open_paystack_setup_form()))
+
+        paypal_btn = MDRaisedButton(
+            text="PayPal Email",
+            md_bg_color=(1, 0.6, 0.2, 1),
+            size_hint_x=1
+        )
+        paypal_btn.bind(on_release=lambda x: (modal.dismiss(), self.open_paypal_setup_form()))
+
+        close_btn = MDFlatButton(
+            text="CLOSE",
+            size_hint_x=1
+        )
+        close_btn.bind(on_release=lambda x: modal.dismiss())
+
+        card.add_widget(paystack_btn)
+        card.add_widget(paypal_btn)
+        card.add_widget(close_btn)
+
+        modal.add_widget(card)
+        modal.open()
+
+    def open_paystack_setup_form(self):
+        from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.textfield import MDTextField
+        from kivymd.uix.button import MDFlatButton, MDRaisedButton
+        from kivymd.uix.boxlayout import MDBoxLayout
+
+        layout = MDBoxLayout(
+            orientation="vertical",
+            spacing="15dp",
+            padding="10dp",
+            size_hint_y=None
+        )
+        layout.bind(minimum_height=layout.setter("height"))
+
+        bank_code_input = MDTextField(hint_text="Bank Code (e.g. 470010)")
+        account_number_input = MDTextField(hint_text="Account Number")
+        account_name_input = MDTextField(hint_text="Business/Account Name")
+
+        layout.add_widget(bank_code_input)
+        layout.add_widget(account_number_input)
+        layout.add_widget(account_name_input)
+
+        self.dialog = MDDialog(
+            title="Paystack Bank Details",
+            type="custom",
+            content_cls=layout,
+            buttons=[
+                MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss()),
+                MDRaisedButton(
+                    text="SAVE",
+                    on_release=lambda x: self.submit_paystack_setup(
+                        bank_code_input.text,
+                        account_number_input.text,
+                        account_name_input.text
+                    )
+                ),
+            ],
+        )
+        self.dialog.open()
+
+    def submit_paystack_setup(self, bank_code, account_number, account_name):
+        from app.utils.network import NetworkClient
+
+        bank_code = bank_code.strip()
+        account_number = account_number.strip()
+        account_name = account_name.strip()
+
+        if not bank_code or not account_number or not account_name:
+            toast("All fields are required")
+            return
+
+        app = MDApp.get_running_app()
+        token = getattr(app, "current_user", {}).get("token")
+
+        if not token:
+            toast("Please login again")
+            return
+
+        headers = {"Authorization": f"Bearer {token}"}
+        payload = {
+            "bank_code": bank_code,
+            "bank_account_number": account_number,
+            "bank_account_name": account_name
+        }
+
+        NetworkClient.post(
+            f"{API_URL}/auth/setup-subaccount",
+            json=payload,
+            headers=headers,
+            callback=self.on_payout_setup_saved
+        )
+
+    def open_paypal_setup_form(self):
+        from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.textfield import MDTextField
+        from kivymd.uix.button import MDFlatButton, MDRaisedButton
+        from kivymd.uix.boxlayout import MDBoxLayout
+
+        layout = MDBoxLayout(
+            orientation="vertical",
+            spacing="15dp",
+            padding="10dp",
+            size_hint_y=None
+        )
+        layout.bind(minimum_height=layout.setter("height"))
+
+        email_input = MDTextField(hint_text="PayPal Email Address")
+        layout.add_widget(email_input)
+
+        self.dialog = MDDialog(
+            title="PayPal Payout Email",
+            type="custom",
+            content_cls=layout,
+            buttons=[
+                MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss()),
+                MDRaisedButton(
+                    text="SAVE",
+                    on_release=lambda x: self.submit_paypal_setup(email_input.text)
+                ),
+            ],
+        )
+        self.dialog.open()
+
+    def submit_paypal_setup(self, email):
+        from app.utils.network import NetworkClient
+
+        email = email.strip()
+
+        if not email:
+            toast("Email is required")
+            return
+
+        app = MDApp.get_running_app()
+        token = getattr(app, "current_user", {}).get("token")
+
+        if not token:
+            toast("Please login again")
+            return
+
+        headers = {"Authorization": f"Bearer {token}"}
+        payload = {"paypal_email": email}
+
+        NetworkClient.post(
+            f"{API_URL}/auth/setup-paypal-payee",
+            json=payload,
+            headers=headers,
+            callback=self.on_payout_setup_saved
+        )
+
+    def on_payout_setup_saved(self, response, error=None):
+        def ui(dt):
+            if error or response is None or response.status_code not in (200, 201):
+                msg = response.text if response is not None else "Network error"
+                toast(f"Failed to save: {msg}")
+                return
+            toast("Payout details saved successfully")
+            if hasattr(self, "dialog") and self.dialog:
+                self.dialog.dismiss()
+        Clock.schedule_once(ui)
 
     def open_paystack(self):
         self._get_completed_jobs_for_payment(
