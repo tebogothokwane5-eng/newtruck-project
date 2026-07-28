@@ -15,7 +15,8 @@ from backend.models.user import (
     Job,
     JobStatus,
     JobApplication,
-    DeliverySlip
+    DeliverySlip,
+    ApplicationStatus
 )
 
 
@@ -175,7 +176,6 @@ def available_jobs(current_user: User = Depends(get_current_user), db: Session =
 
     return output
 
-
 # ----------------- APPLY -----------------
 @router.post("/apply-with-truck-pack")
 def apply_with_truck_pack(
@@ -190,23 +190,30 @@ def apply_with_truck_pack(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    app_entry = db.query(JobApplication).filter(
-        JobApplication.job_id == job_id,
-        JobApplication.truck_owner_id == current_user.id
-    ).first()
-
-    if not app_entry:
-        app_entry = JobApplication(
-            job_id=job.id,
-            truck_owner_id=current_user.id,
-            status=JobStatus.pending
-        )
-        db.add(app_entry)
-        job.applicant_count = (job.applicant_count or 0) + 1
+    if job.target_limit and (job.applicant_count or 0) >= job.target_limit:
+        raise HTTPException(status_code=400, detail="This job's slots are full")
 
     filename = f"{int(time.time())}_{file.filename.replace(' ', '_')}"
     truck_pack_url_result = upload_file(file.file, f"truck_packs/{filename}", file.content_type)
-    app_entry.truck_pack = truck_pack_url_result
+
+    app_entry = JobApplication(
+        job_id=job.id,
+        truck_owner_id=current_user.id,
+        status=ApplicationStatus.pending,
+        truck_pack=truck_pack_url_result
+    )
+    db.add(app_entry)
+
+    job.applicant_count = (job.applicant_count or 0) + 1
+
+    db.commit()
+    db.refresh(app_entry)
+
+    return {
+        "message": "Truck pack uploaded",
+        "application_id": app_entry.id,
+        "file_url": app_entry.truck_pack
+    }
 
     db.commit()
     db.refresh(app_entry)
@@ -318,7 +325,8 @@ def get_delivery_slips(
             raise HTTPException(status_code=404, detail="Application not found")
 
         slips = db.query(DeliverySlip).filter(
-            DeliverySlip.application_id == application_id
+            DeliverySlip,
+    ApplicationStatus.application_id == application_id
         ).all()
 
         response = []
