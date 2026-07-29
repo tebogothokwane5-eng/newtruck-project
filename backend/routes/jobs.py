@@ -414,3 +414,77 @@ def assign_order(
         "order_number": app_entry.order_number,
         "location": app_entry.location
     }
+
+
+# ----------------- APPROVE / REJECT APPLICATION -----------------
+@router.patch("/applications/{application_id}/approve")
+def approve_application(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    contractor_required(current_user)
+
+    app_entry = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+    if not app_entry:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    app_entry.status = ApplicationStatus.approved
+    db.commit()
+    db.refresh(app_entry)
+
+    return {
+        "message": "Application approved",
+        "application_id": app_entry.id,
+        "status": app_entry.status.value
+    }
+
+
+@router.patch("/applications/{application_id}/reject")
+def reject_application(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    contractor_required(current_user)
+
+    app_entry = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+    if not app_entry:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    app_entry.status = ApplicationStatus.rejected
+    db.commit()
+    db.refresh(app_entry)
+
+    return {
+        "message": "Application rejected",
+        "application_id": app_entry.id,
+        "status": app_entry.status.value
+    }
+
+
+# ----------------- LIST APPLICATIONS FOR A JOB -----------------
+@router.get("/{job_id}/applications")
+def get_job_applications(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    contractor_required(current_user)
+
+    applications = db.query(JobApplication).filter(JobApplication.job_id == job_id).all()
+
+    result = []
+    for a in applications:
+        truck_owner = db.query(User).filter(User.id == a.truck_owner_id).first()
+        result.append({
+            "application_id": a.id,
+            "truck_owner_id": a.truck_owner_id,
+            "truck_owner_username": truck_owner.username if truck_owner else "Unknown",
+            "status": a.status.value if hasattr(a.status, "value") else str(a.status),
+            "truck_pack_url": a.truck_pack,
+            "order_number": a.order_number,
+            "location": a.location
+        })
+
+    return result
