@@ -43,64 +43,54 @@ def get_payment_services():
 # ============================
 # MAIN PAYMENT ENDPOINT
 # ============================
-@router.post("/initiate/{job_id}")
+@router.post("/initiate/application/{application_id}")
 def initiate_payment(
-    job_id: int,
+    application_id: int,
     data: PaymentRequest,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_dep())
 ):
     method = data.method.lower()
-
     initiate_paystack, initiate_paypal = get_payment_services()
 
-    # ---------------- GET JOB ----------------
-    job = db.query(Job).filter(Job.id == job_id).first()
+    # ---------------- GET APPLICATION ----------------
+    app_entry = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+    if not app_entry:
+        raise HTTPException(status_code=404, detail="Application not found")
 
+    if app_entry.status != ApplicationStatus.approved:
+        raise HTTPException(status_code=400, detail="This truck owner is not approved for this job")
+
+    job = db.query(Job).filter(Job.id == app_entry.job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    if job.status.value.lower() != "completed":
-        raise HTTPException(status_code=400, detail="Job not completed")
-
     # ---------------- CREATE PAYMENT RECORD ----------------
-    approved_app = db.query(JobApplication).filter(
-        JobApplication.job_id == job.id,
-        JobApplication.status == ApplicationStatus.approved
-    ).first()
-
-    if not approved_app:
-        raise HTTPException(status_code=400, detail="No approved truck owner for this job")
-
     payment = Payment(
-        truck_owner_id=approved_app.truck_owner_id,
+        truck_owner_id=app_entry.truck_owner_id,
+        application_id=app_entry.id,
         job_id=job.id,
         contractor_id=current_user.id,
         amount=job.price,
         status="pending"
     )
-
     db.add(payment)
     db.commit()
     db.refresh(payment)
 
-
+    # ================= PAYSTACK =================
     if method == "paystack":
         if not current_user.paystack_subaccount_code:
             raise HTTPException(status_code=400, detail="Please set up your payout bank details first")
-        res = initiate_paystack(current_user.email, job.price, subaccount_code=current_user.paystack_subaccount_code)
 
+        res = initiate_paystack(current_user.email, job.price, subaccount_code=current_user.paystack_subaccount_code)
         print("🔵 PAYSTACK RAW RESPONSE:", res)
 
-        # 🔴 FIX: expose real error
         if not res:
             raise HTTPException(status_code=500, detail="Empty response from Paystack")
 
         if res.get("error"):
-            raise HTTPException(
-                status_code=res.get("status", 500),
-                detail=res.get("message")
-            )
+            raise HTTPException(status_code=res.get("status", 500), detail=res.get("message"))
 
         if "data" not in res:
             raise HTTPException(status_code=500, detail=f"Invalid Paystack response: {res}")
@@ -112,12 +102,13 @@ def initiate_payment(
             "payment_url": res["data"]["authorization_url"],
             "reference": payment.reference
         }
+
     # ================= PAYPAL =================
     elif method == "paypal":
         if not current_user.paypal_email:
             raise HTTPException(status_code=400, detail="Please set up your PayPal payout email first")
-        res = initiate_paypal(job.price, payee_email=current_user.paypal_email)
 
+        res = initiate_paypal(job.price, payee_email=current_user.paypal_email)
         print("🟡 PAYPAL RAW RESPONSE:", res)
 
         if not res:
@@ -141,6 +132,8 @@ def initiate_payment(
             "payment_url": approval_url,
             "reference": payment.reference
         }
+
+    # ================= INVALID METHOD =================
 
     # ================= INVALID METHOD =================
     else:

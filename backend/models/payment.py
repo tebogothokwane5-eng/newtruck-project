@@ -10,6 +10,7 @@ class Payment(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     job_id = Column(Integer, ForeignKey("work_orders.id"), nullable=False)
+    application_id = Column(Integer, ForeignKey("job_applications.id"), nullable=True)
     contractor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     truck_owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
