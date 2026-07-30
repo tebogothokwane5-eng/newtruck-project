@@ -652,6 +652,9 @@ class ContractorHome(MDScreen):
         from kivymd.uix.textfield import MDTextField
         from kivymd.uix.button import MDFlatButton
         from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.scrollview import ScrollView
+        from kivymd.app import MDApp
+        from kivymd.toast import toast
 
         app = MDApp.get_running_app()
 
@@ -659,21 +662,48 @@ class ContractorHome(MDScreen):
             toast("User not logged in")
             return
 
-        layout = BoxLayout(orientation="vertical", spacing=15, size_hint_y=None)
-        layout.bind(minimum_height=layout.setter('height'))
+        # ✅ Main content (scrollable)
+        content = BoxLayout(
+            orientation="vertical",
+            spacing=15,
+            size_hint_y=None,
+            padding=10
+        )
+        content.bind(minimum_height=content.setter('height'))
 
-        title_input = MDTextField(hint_text="Job Title")
-        desc_input = MDTextField(hint_text="Description")
-        limit_input = MDTextField(hint_text="Target Limit", input_filter="int")
+        # ✅ ScrollView (FULL HEIGHT, responsive)
+        scroll = ScrollView(size_hint=(1, 1))
+        scroll.add_widget(content)
 
-        layout.add_widget(title_input)
-        layout.add_widget(desc_input)
-        layout.add_widget(limit_input)
+        # ✅ Inputs
+        title_input = MDTextField(
+            hint_text="Job Title",
+            size_hint_y=None,
+            height="48dp"
+        )
 
+        desc_input = MDTextField(
+            hint_text="Description",
+            size_hint_y=None,
+            height="48dp"
+        )
+
+        limit_input = MDTextField(
+            hint_text="Target Limit",
+            input_filter="int",
+            size_hint_y=None,
+            height="48dp"
+        )
+
+        content.add_widget(title_input)
+        content.add_widget(desc_input)
+        content.add_widget(limit_input)
+
+        # ✅ Dialog (FIXED: use scroll, not undefined layout)
         self.dialog = MDDialog(
             title="Post New Job",
             type="custom",
-            content_cls=layout,
+            content_cls=scroll,
             buttons=[
                 MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss()),
                 MDFlatButton(
@@ -685,7 +715,7 @@ class ContractorHome(MDScreen):
                     )
                 ),
             ],
-        )
+       )
 
         self.dialog.open()
 
@@ -1117,80 +1147,7 @@ class ContractorHome(MDScreen):
     def check_payment_status(self):
         toast("Payment status check coming soon")
 
-# ---------------- LOAD JOBS ----------------
-    #def load_jobs(self, *args):
-        #self.ids.jobs_list.clear_widgets()
 
-        # ✅ FIX: correct token source
-        #app = MDApp.get_running_app()
-        #token = getattr(app, "current_user", {}).get("token")
-
-        #if not token:
-            #toast("Please login again")
-            #self.manager.current = 'login'
-            #return
-
-        #headers = {"Authorization": f"Bearer {token}"}
-
-        #try:
-            #r = requests.get(f"{API_URL}/jobs/", headers=headers, timeout=5)
-
-            #if r.status_code != 200:
-                #toast(f"Error {r.status_code}: Failed to load")
-                #print("LOAD JOBS ERROR:", r.text)
-                #return
-
-            #jobs = r.json()
-
-            #for job in jobs:
-                #title = job.get("title", "Untitled")
-                #description = job.get("description", "")
-
-                #status_val = str(job.get("status", "pending")).lower().strip()
-                #is_active = (status_val == "pending")
-
-                #applicants = int(job.get("applicant_count") or 0)
-                #limit = int(job.get("target_limit") or 0)
-
-                #app_text = f"{applicants}/{limit} Applicant{'s' if limit != 1 else ''}"
-                #display_status = "OPEN" if is_active else "CLOSED"
-
-                #item = ThreeLineAvatarIconListItem(
-                    #text=f"{title} ({app_text})",
-                    #secondary_text=description,
-                    #tertiary_text=f"STATUS: {display_status}",
-                #)
-
-                #item.bind(on_release=lambda inst, job=job: self.open_truck_pack(job))
-
-                #status_btn = IconRightWidget(
-                    #icon="lock-open-outline" if is_active else "lock",
-                    #theme_text_color="Custom",
-                    #text_color=(0, 0.7, 0, 1) if is_active else (0.8, 0, 0, 1),
-                #)
-
-                #status_btn.bind(
-                    #on_release=lambda inst, j=job, s=status_val: self.toggle_job(j, s)
-                #)
-
-                #item.add_widget(status_btn)
-
-                #applications = job.get("applications", [])
-                #if applications:
-                    #app_id = applications[0].get("application_id")
-
-                    #assign_icon = IconRightWidget(icon="map-marker-plus")
-                    #assign_icon.bind(
-                       #on_release=lambda inst, app_id=app_id: self.assign_order_popup(app_id)
-                    #)
-
-                    #item.add_widget(assign_icon)
-
-                #self.ids.jobs_list.add_widget(item)
-
-        #except Exception as e:
-            #print(f"Network/UI Error: {e}")
-            #toast("Connection error")
 
     def load_jobs(self, *args):
 
