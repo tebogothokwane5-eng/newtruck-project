@@ -892,7 +892,8 @@ class ContractorHome(MDScreen):
             spacing="10dp",
             radius=[16],
             md_bg_color=(0.14, 0.14, 0.14, 1),
-            size_hint=(1, 1)
+            size_hint_y=None,        # 🔥 critical
+            adaptive_height=True   
         )
 
         card.add_widget(MDLabel(
@@ -901,8 +902,7 @@ class ContractorHome(MDScreen):
             theme_text_color="Custom",
             text_color=(1, 1, 1, 1),
             halign="center",
-            size_hint_y=None,
-            height="30dp"
+            adaptive_height=True
         ))
 
         paystack_btn = MDRaisedButton(
