@@ -254,6 +254,7 @@ ScreenManager:
                             theme_icon_color: "Custom"
                             icon_color: 0.2, 0.6, 1, 1
                             pos_hint: {"center_y": 0.5}
+                            on_release: root.open_payments_menu()
 
                 # ================= JOBS HEADER =================
                 MDLabel:
