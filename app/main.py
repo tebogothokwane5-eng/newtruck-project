@@ -281,43 +281,36 @@ ScreenManager:
                     height: "100dp"
 
         # ---------------- BOTTOM ACTION BAR ----------------
-       
-    ScrollView:
-        size_hint_y: None
-        height: "70dp"
-        do_scroll_y: False
-        do_scroll_x: True
-
+   
         MDBoxLayout:
-            orientation: "horizontal"
-            size_hint_x: None
-            width: self.minimum_width
+            size_hint_y: None
+            height: "70dp"
             padding: "10dp"
-            spacing: "10dp"
+            spacing: "20dp"
             md_bg_color: 0.12, 0.12, 0.12, 1
 
-            MDRaisedButton:
-                text: "Post Job"
-                size_hint_x: None
-                width: "140dp"
-                height: "48dp"
-                md_bg_color: 0.2, 0.6, 1, 1
+            MDIconButton:
+                icon: "briefcase-plus"
+                theme_icon_color: "Custom"
+                icon_color: 0.2, 0.6, 1, 1
+                user_font_size: "28sp"
+                pos_hint: {"center_y": 0.5}
                 on_release: root.post_job()
 
-            MDRaisedButton:
-                text: "Refresh"
-                size_hint_x: None
-                width: "120dp"
-                height: "48dp"
-                md_bg_color: 0.2, 0.7, 0.4, 1
+            MDIconButton:
+                icon: "refresh"
+                theme_icon_color: "Custom"
+                icon_color: 0.2, 0.7, 0.4, 1
+                user_font_size: "28sp"
+                pos_hint: {"center_y": 0.5}
                 on_release: root.load_jobs()
 
-            MDRaisedButton:
-                text: "Monitoring"
-                size_hint_x: None
-                width: "150dp"
-                height: "48dp"
-                md_bg_color: 0.8, 0.4, 0.2, 1
+            MDIconButton:
+                icon: "account-search"
+                theme_icon_color: "Custom"
+                icon_color: 0.8, 0.4, 0.2, 1
+                user_font_size: "28sp"
+                pos_hint: {"center_y": 0.5}
                 on_release: root.load_applicants()
 
 
