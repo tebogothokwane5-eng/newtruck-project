@@ -877,25 +877,25 @@ class ContractorHome(MDScreen):
         from kivy.uix.modalview import ModalView
         from kivymd.uix.card import MDCard
         from kivymd.uix.boxlayout import MDBoxLayout
-        from kivymd.uix.button import MDRaisedButton, MDFlatButton
+        from kivymd.uix.button import MDIconButton
         from kivymd.uix.label import MDLabel
 
         modal = ModalView(
             size_hint=(0.85, None),
-            height="380dp",
             background_color=(0, 0, 0, 0.6)
         )
 
         card = MDCard(
             orientation="vertical",
             padding="16dp",
-            spacing="10dp",
+            spacing="14dp",
             radius=[16],
             md_bg_color=(0.14, 0.14, 0.14, 1),
-            size_hint_y=None,        # 🔥 critical
-            adaptive_height=True   
+            size_hint_y=None,
+            adaptive_height=True
         )
 
+        # ---------- TITLE ----------
         card.add_widget(MDLabel(
             text="Payments",
             font_style="H6",
@@ -905,45 +905,70 @@ class ContractorHome(MDScreen):
             adaptive_height=True
         ))
 
-        paystack_btn = MDRaisedButton(
-            text="Paystack",
-            md_bg_color=(0.2, 0.6, 1, 1),
-            size_hint_x=1
-        )
-        paystack_btn.bind(on_release=lambda x: (modal.dismiss(), self.open_paystack()))
+        # ---------- HELPER FUNCTION ----------
+        def icon_item(icon, text, color, action):
+            box = MDBoxLayout(
+                orientation="vertical",
+                size_hint_y=None,
+                height="70dp"
+            )
 
-        paypal_btn = MDRaisedButton(
-            text="PayPal",
-            md_bg_color=(1, 0.6, 0.2, 1),
-            size_hint_x=1
-        )
-        paypal_btn.bind(on_release=lambda x: (modal.dismiss(), self.open_paypal()))
+            btn = MDIconButton(
+                icon=icon,
+                theme_icon_color="Custom",
+                icon_color=color,
+                user_font_size="28sp",
+                pos_hint={"center_x": 0.5}
+            )
+            btn.bind(on_release=action)
 
-        status_btn = MDRaisedButton(
-            text="Check Status",
-            md_bg_color=(0.3, 0.8, 0.4, 1),
-            size_hint_x=1
-        )
-        status_btn.bind(on_release=lambda x: (modal.dismiss(), self.check_payment_status()))
+            label = MDLabel(
+                 text=text,
+                halign="center",
+                font_size="12sp",
+                theme_text_color="Custom",
+                text_color=(1, 1, 1, 1)
+            )
 
-        setup_btn = MDRaisedButton(
-            text="Setup Payout Details",
-            md_bg_color=(0.5, 0.3, 0.9, 1),
-            size_hint_x=1
-        )
-        setup_btn.bind(on_release=lambda x: (modal.dismiss(), self.open_setup_payout()))
+            box.add_widget(btn)
+            box.add_widget(label)
+            return box
 
-        close_btn = MDFlatButton(
-            text="CLOSE",
-            size_hint_x=1
-        )
-        close_btn.bind(on_release=lambda x: modal.dismiss())
+        # ---------- BUTTONS ----------
+        card.add_widget(icon_item(
+            "credit-card",
+            "Paystack",
+            (0.2, 0.6, 1, 1),
+            lambda x: (modal.dismiss(), self.open_paystack())
+        ))
 
-        card.add_widget(paystack_btn)
-        card.add_widget(paypal_btn)
-        card.add_widget(status_btn)
-        card.add_widget(setup_btn)
-        card.add_widget(close_btn)
+        card.add_widget(icon_item(
+            "paypal",
+            "PayPal",
+            (1, 0.6, 0.2, 1),
+            lambda x: (modal.dismiss(), self.open_paypal())
+        ))
+
+        card.add_widget(icon_item(
+            "refresh",
+            "Status",
+            (0.3, 0.8, 0.4, 1),
+            lambda x: (modal.dismiss(), self.check_payment_status())
+        ))
+
+        card.add_widget(icon_item(
+            "cog",
+            "Setup",
+            (0.5, 0.3, 0.9, 1),
+            lambda x: (modal.dismiss(), self.open_setup_payout())
+        ))
+
+        card.add_widget(icon_item(
+            "close",
+            "Close",
+            (0.7, 0.7, 0.7, 1),
+            lambda x: modal.dismiss()
+        ))
 
         modal.add_widget(card)
         modal.open()
