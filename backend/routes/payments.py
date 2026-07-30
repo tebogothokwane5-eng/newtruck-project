@@ -65,6 +65,9 @@ def initiate_payment(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
+    if job.contractor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not own this job")
+
     # ---------------- CREATE PAYMENT RECORD ----------------
     payment = Payment(
         truck_owner_id=app_entry.truck_owner_id,

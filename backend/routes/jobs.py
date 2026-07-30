@@ -429,6 +429,10 @@ def approve_application(
     if not app_entry:
         raise HTTPException(status_code=404, detail="Application not found")
 
+    job = db.query(Job).filter(Job.id == app_entry.job_id).first()
+    if not job or job.contractor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not own this job")
+
     app_entry.status = ApplicationStatus.approved
     db.commit()
     db.refresh(app_entry)
@@ -452,6 +456,10 @@ def reject_application(
     if not app_entry:
         raise HTTPException(status_code=404, detail="Application not found")
 
+    job = db.query(Job).filter(Job.id == app_entry.job_id).first()
+    if not job or job.contractor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not own this job")
+
     app_entry.status = ApplicationStatus.rejected
     db.commit()
     db.refresh(app_entry)
@@ -472,6 +480,26 @@ def get_job_applications(
 ):
     contractor_required(current_user)
 
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job or job.contractor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not own this job")
+
+    applications = db.query(JobApplication).filter(JobApplication.job_id == job_id).all()
+
+    result = []
+    for a in applications:
+        truck_owner = db.query(User).filter(User.id == a.truck_owner_id).first()
+        result.append({
+            "application_id": a.id,
+            "truck_owner_id": a.truck_owner_id,
+            "truck_owner_username": truck_owner.username if truck_owner else "Unknown",
+            "status": a.status.value if hasattr(a.status, "value") else str(a.status),
+            "truck_pack_url": a.truck_pack,
+            "order_number": a.order_number,
+            "location": a.location
+        })
+
+    return result
     applications = db.query(JobApplication).filter(JobApplication.job_id == job_id).all()
 
     result = []
