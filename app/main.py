@@ -881,14 +881,14 @@ class ContractorHome(MDScreen):
         from kivymd.uix.label import MDLabel
 
         modal = ModalView(
-            size_hint=(0.85, None),
+            size_hint=(0.9, None),
             background_color=(0, 0, 0, 0.6)
         )
 
         card = MDCard(
             orientation="vertical",
             padding="16dp",
-            spacing="14dp",
+            spacing="18dp",
             radius=[16],
             md_bg_color=(0.14, 0.14, 0.14, 1),
             size_hint_y=None,
@@ -905,27 +905,26 @@ class ContractorHome(MDScreen):
             adaptive_height=True
         ))
 
-        # ---------- HELPER FUNCTION ----------
+        # ---------- HELPER ----------
         def icon_item(icon, text, color, action):
             box = MDBoxLayout(
                 orientation="vertical",
-                size_hint_y=None,
-                height="70dp"
+                size_hint_x=1
             )
 
             btn = MDIconButton(
                 icon=icon,
                 theme_icon_color="Custom",
                 icon_color=color,
-                user_font_size="28sp",
+                user_font_size="26sp",
                 pos_hint={"center_x": 0.5}
             )
             btn.bind(on_release=action)
 
             label = MDLabel(
-                 text=text,
+                text=text,
                 halign="center",
-                font_size="12sp",
+                font_size="11sp",
                 theme_text_color="Custom",
                 text_color=(1, 1, 1, 1)
             )
@@ -934,41 +933,75 @@ class ContractorHome(MDScreen):
             box.add_widget(label)
             return box
 
-        # ---------- BUTTONS ----------
-        card.add_widget(icon_item(
+         # ---------- HORIZONTAL ROW ----------
+        row = MDBoxLayout(
+            orientation="horizontal",
+            spacing="12dp",
+            size_hint_y=None,
+            height="90dp"
+        )
+
+        row.add_widget(icon_item(
             "credit-card",
             "Paystack",
             (0.2, 0.6, 1, 1),
             lambda x: (modal.dismiss(), self.open_paystack())
         ))
 
-        card.add_widget(icon_item(
-            "paypal",
+        row.add_widget(icon_item(
+            "alpha-p-circle",   # 🔥 FIX: visible PayPal icon
             "PayPal",
-            (1, 0.6, 0.2, 1),
+            (0.0, 0.6, 1, 1),   # 🔥 blue color (visible)
             lambda x: (modal.dismiss(), self.open_paypal())
         ))
 
-        card.add_widget(icon_item(
+        row.add_widget(icon_item(
             "refresh",
             "Status",
             (0.3, 0.8, 0.4, 1),
             lambda x: (modal.dismiss(), self.check_payment_status())
         ))
 
-        card.add_widget(icon_item(
+        row.add_widget(icon_item(
             "cog",
             "Setup",
-            (0.5, 0.3, 0.9, 1),
+            (0.7, 0.4, 1, 1),
             lambda x: (modal.dismiss(), self.open_setup_payout())
         ))
 
-        card.add_widget(icon_item(
-            "close",
-            "Close",
-            (0.7, 0.7, 0.7, 1),
-            lambda x: modal.dismiss()
-        ))
+        # ADD ROW
+        card.add_widget(row)
+
+        # ---------- CLOSE BUTTON ----------
+        close_row = MDBoxLayout(
+            size_hint_y=None,
+            height="60dp"
+        )
+
+        close_btn = MDIconButton(
+            icon="close",
+            theme_icon_color="Custom",
+            icon_color=(0.7, 0.7, 0.7, 1),
+            user_font_size="26sp",
+            pos_hint={"center_x": 0.5}
+        )
+        close_btn.bind(on_release=lambda x: modal.dismiss())
+
+        close_label = MDLabel(
+            text="Close",
+            halign="center",
+            font_size="11sp",
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1)
+        )
+
+        close_box = MDBoxLayout(orientation="vertical")
+        close_box.add_widget(close_btn)
+        close_box.add_widget(close_label)
+
+        close_row.add_widget(close_box)
+
+        card.add_widget(close_row)
 
         modal.add_widget(card)
         modal.open()
