@@ -666,7 +666,7 @@ class ContractorHome(MDScreen):
         from kivymd.uix.dialog import MDDialog
         from kivymd.uix.textfield import MDTextField
         from kivymd.uix.button import MDFlatButton
-        from kivy.uix.boxlayout import BoxLayout
+        from kivymd.uix.boxlayout import MDBoxLayout
         from kivy.uix.scrollview import ScrollView
         from kivymd.app import MDApp
         from kivymd.toast import toast
@@ -677,63 +677,80 @@ class ContractorHome(MDScreen):
             toast("User not logged in")
             return
 
-        # ✅ Main content (scrollable)
-        content = BoxLayout(
+        # ---------- INPUT STYLE ----------
+        def styled_input(hint, is_int=False, multiline=False, height="56dp"):
+            return MDTextField(
+                hint_text=hint,
+                mode="rectangle",
+                multiline=multiline,
+                size_hint_y=None,
+                height=height,
+                line_color_normal=(0.5, 0.5, 0.5, 1),
+                line_color_focus=(0.2, 0.6, 1, 1),
+                input_filter="int" if is_int else None
+            )
+
+        # ---------- CONTENT ----------
+        content = MDBoxLayout(
             orientation="vertical",
-            spacing=15,
-            size_hint_y=None,
-            padding=10
+            spacing="15dp",
+            padding="10dp",
+            size_hint_y=None
         )
-        content.bind(minimum_height=content.setter('height'))
+        content.bind(minimum_height=content.setter("height"))
 
-        # ✅ ScrollView (FULL HEIGHT, responsive)
-        scroll = ScrollView(size_hint=(1, 1))
-        scroll.add_widget(content)
+        # ---------- INPUTS ----------
+        title_input = styled_input("Job Title")
 
-        # ✅ Inputs
-        title_input = MDTextField(
-            hint_text="Job Title",
-            size_hint_y=None,
-            height="48dp"
+        desc_input = styled_input(
+            "Description",
+            multiline=True,
+            height="120dp"   # 🔥 IMPORTANT: makes it visible & usable
         )
 
-        desc_input = MDTextField(
-            hint_text="Description",
-            size_hint_y=None,
-            height="48dp"
-        )
-
-        limit_input = MDTextField(
-            hint_text="Target Limit",
-            input_filter="int",
-            size_hint_y=None,
-            height="48dp"
-        )
+        limit_input = styled_input("Target Limit", is_int=True)
 
         content.add_widget(title_input)
         content.add_widget(desc_input)
         content.add_widget(limit_input)
+ 
+        # ---------- SCROLL ----------
+        scroll = ScrollView(size_hint=(1, 1))
+        scroll.add_widget(content)
 
-        # ✅ Dialog (FIXED: use scroll, not undefined layout)
+        # ---------- FIX: WRAPPER CONTAINER ----------
+        container = MDBoxLayout(
+            orientation="vertical",
+            size_hint=(1, None),
+            height="320dp"   # 🔥 CRITICAL FIX (prevents invisible fields)
+        )
+        container.add_widget(scroll)
+
+        # ---------- DIALOG ----------
         self.dialog = MDDialog(
             title="Post New Job",
             type="custom",
-            content_cls=scroll,
+            content_cls=container,   # ✅ use container, NOT scroll directly
+            size_hint=(0.9, None),
+            height="450dp",
             buttons=[
-                MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss()),
+                MDFlatButton(
+                    text="CANCEL",
+                    on_release=lambda x: self.dialog.dismiss()
+                ),
                 MDFlatButton(
                     text="POST",
                     on_release=lambda x: self.submit_job(
                         title_input.text,
                         desc_input.text,
-                        limit_input.text
+                         limit_input.text
                     )
                 ),
             ],
-       )
+        )
 
         self.dialog.open()
-
+        
     def submit_job(self, title, desc, limit):
         app = MDApp.get_running_app()
 
