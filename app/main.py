@@ -287,33 +287,37 @@ ScreenManager:
             size_hint_y: None
             height: "70dp"
             padding: "10dp"
-            spacing: "20dp"
+            spacing: "10dp"
             md_bg_color: 0.12, 0.12, 0.12, 1
+
+            Widget:  # 🔥 left spacer
 
             MDIconButton:
                 icon: "briefcase-plus"
                 theme_icon_color: "Custom"
                 icon_color: 0.2, 0.6, 1, 1
                 user_font_size: "28sp"
-                pos_hint: {"center_y": 0.5}
                 on_release: root.post_job()
+
+            Widget:
 
             MDIconButton:
                 icon: "refresh"
                 theme_icon_color: "Custom"
                 icon_color: 0.2, 0.7, 0.4, 1
                 user_font_size: "28sp"
-                pos_hint: {"center_y": 0.5}
                 on_release: root.load_jobs()
+
+            Widget:
 
             MDIconButton:
                 icon: "account-search"
                 theme_icon_color: "Custom"
                 icon_color: 0.8, 0.4, 0.2, 1
                 user_font_size: "28sp"
-                pos_hint: {"center_y": 0.5}
                 on_release: root.load_applicants()
 
+            Widget:  # 🔥 right spacer
 
 
 # ---------------- TRUCK OWNER ----------------
@@ -750,7 +754,7 @@ class ContractorHome(MDScreen):
         )
 
         self.dialog.open()
-        
+
     def submit_job(self, title, desc, limit):
         app = MDApp.get_running_app()
 
@@ -793,8 +797,8 @@ class ContractorHome(MDScreen):
             toast("Server error")
 
     # ---------------- PAYMENTS ----------------
-    def _get_completed_jobs_for_payment(self, on_result):
-        """Fetch this contractor's completed jobs, then call on_result(list_of_jobs)."""
+    def _get_jobs_for_payment(self, on_result):
+        """Fetch this contractor's jobs, then call on_result(list_of_jobs)."""
         app = MDApp.get_running_app()
         token = getattr(app, "current_user", {}).get("token")
 
@@ -811,13 +815,12 @@ class ContractorHome(MDScreen):
                     return
 
                 jobs = response.json()
-                completed = [j for j in jobs if str(j.get("status", "")).lower() == "completed"]
 
-                if not completed:
-                    toast("No completed jobs to pay for")
+                if not jobs:
+                    toast("No jobs found")
                     return
 
-                on_result(completed)
+                on_result(jobs)
 
             Clock.schedule_once(ui)
 
@@ -828,10 +831,6 @@ class ContractorHome(MDScreen):
         from kivymd.uix.boxlayout import MDBoxLayout
         from kivymd.uix.button import MDFlatButton
         from kivymd.uix.dialog import MDDialog
-
-        if len(jobs) == 1:
-            on_pick(jobs[0])
-            return
 
         layout = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None)
         layout.bind(minimum_height=layout.setter("height"))
@@ -846,17 +845,71 @@ class ContractorHome(MDScreen):
             layout.add_widget(btn)
 
         self.dialog = MDDialog(
-            title="Select a completed job",
+            title="Select a job",
             type="custom",
             content_cls=layout,
             buttons=[MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss())],
         )
         self.dialog.open()
 
-    def _initiate_payment(self, job, method):
+    def _fetch_approved_applications(self, job_id, on_result):
+        """Fetch approved applications for a job, then call on_result(list_of_applications)."""
         app = MDApp.get_running_app()
         token = getattr(app, "current_user", {}).get("token")
+        headers = {"Authorization": f"Bearer {token}"}
 
+        def handle_response(response, error=None):
+            def ui(dt):
+                if error or response is None or response.status_code != 200:
+                    toast("Could not load applications")
+                    return
+
+                applications = response.json()
+                approved = [a for a in applications if str(a.get("status", "")).lower() == "approved"]
+
+                if not approved:
+                    toast("No approved truck owners for this job")
+                    return
+
+                on_result(approved)
+
+            Clock.schedule_once(ui)
+
+        NetworkClient.get(f"{API_URL}/jobs/{job_id}/applications", headers=headers, callback=handle_response)
+
+    def _pick_application_dialog(self, applications, on_pick):
+        """Show a list of approved truck owner applications to pick from."""
+        from kivymd.uix.boxlayout import MDBoxLayout
+        from kivymd.uix.button import MDFlatButton
+        from kivymd.uix.dialog import MDDialog
+
+        if len(applications) == 1:
+            on_pick(applications[0])
+            return
+
+        layout = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None)
+        layout.bind(minimum_height=layout.setter("height"))
+
+        for a in applications:
+            btn = MDFlatButton(
+                text=f"{a.get('truck_owner_username', 'Unknown')} (App #{a.get('application_id')})",
+                size_hint_y=None,
+                height="40dp"
+            )
+            btn.bind(on_release=lambda x, app=a: (self.dialog.dismiss(), on_pick(app)))
+            layout.add_widget(btn)
+
+        self.dialog = MDDialog(
+            title="Select truck owner to pay",
+            type="custom",
+            content_cls=layout,
+            buttons=[MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss())],
+        )
+        self.dialog.open()
+
+    def _initiate_payment(self, application, method):
+        app = MDApp.get_running_app()
+        token = getattr(app, "current_user", {}).get("token")
         headers = {"Authorization": f"Bearer {token}"}
         payload = {"method": method}
 
@@ -884,12 +937,15 @@ class ContractorHome(MDScreen):
 
         toast(f"Starting {method} payment...")
 
+        application_id = application.get("application_id")
+
         NetworkClient.post(
-            f"{API_URL}/payments/initiate/{job['id']}",
+            f"{API_URL}/payments/initiate/application/{application_id}",
             json=payload,
             headers=headers,
             callback=handle_response
         )
+
     def open_payments_menu(self):
         from kivy.uix.modalview import ModalView
         from kivymd.uix.card import MDCard
@@ -1225,13 +1281,19 @@ class ContractorHome(MDScreen):
         Clock.schedule_once(ui)
 
     def open_paystack(self):
-        self._get_completed_jobs_for_payment(
-            lambda jobs: self._pick_job_dialog(jobs, lambda job: self._initiate_payment(job, "paystack"))
+        self._get_jobs_for_payment(
+            lambda jobs: self._pick_job_dialog(jobs, lambda job: self._fetch_approved_applications(
+                job["id"],
+                lambda apps: self._pick_application_dialog(apps, lambda app: self._initiate_payment(app, "paystack"))
+            ))
         )
 
     def open_paypal(self):
-        self._get_completed_jobs_for_payment(
-            lambda jobs: self._pick_job_dialog(jobs, lambda job: self._initiate_payment(job, "paypal"))
+        self._get_jobs_for_payment(
+            lambda jobs: self._pick_job_dialog(jobs, lambda job: self._fetch_approved_applications(
+                job["id"],
+                lambda apps: self._pick_application_dialog(apps, lambda app: self._initiate_payment(app, "paypal"))
+            ))
         )
 
     def check_payment_status(self):
