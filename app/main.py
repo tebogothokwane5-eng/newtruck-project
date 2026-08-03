@@ -878,34 +878,78 @@ class ContractorHome(MDScreen):
         NetworkClient.get(f"{API_URL}/jobs/{job_id}/applications", headers=headers, callback=handle_response)
 
     def _pick_application_dialog(self, applications, on_pick):
-        """Show a list of approved truck owner applications to pick from."""
+        """Show a list of approved truck owner applications with full details to pick from."""
         from kivymd.uix.boxlayout import MDBoxLayout
-        from kivymd.uix.button import MDFlatButton
+        from kivymd.uix.button import MDFlatButton, MDRaisedButton
         from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.label import MDLabel
+        from kivy.uix.scrollview import ScrollView
 
-        if len(applications) == 1:
-            on_pick(applications[0])
-            return
+        scroll = ScrollView(size_hint=(1, None), height="350dp")
 
-        layout = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None)
+        layout = MDBoxLayout(orientation="vertical", spacing="12dp", padding="5dp", size_hint_y=None)
         layout.bind(minimum_height=layout.setter("height"))
 
         for a in applications:
-            btn = MDFlatButton(
-                text=f"{a.get('truck_owner_username', 'Unknown')} (App #{a.get('application_id')})",
+            row = MDBoxLayout(
+                orientation="vertical",
+                spacing="4dp",
                 size_hint_y=None,
-                height="40dp"
+                padding="8dp"
             )
-            btn.bind(on_release=lambda x, app=a: (self.dialog.dismiss(), on_pick(app)))
-            layout.add_widget(btn)
+            row.bind(minimum_height=row.setter("height"))
+
+            row.add_widget(MDLabel(
+                text=a.get('truck_owner_username', 'Unknown'),
+                bold=True,
+                size_hint_y=None,
+                height="24dp"
+            ))
+            row.add_widget(MDLabel(
+                text=f"Order #: {a.get('order_number') or 'N/A'}",
+                theme_text_color="Secondary",
+                font_size="12sp",
+                size_hint_y=None,
+                height="20dp"
+            ))
+            row.add_widget(MDLabel(
+                text=f"Location: {a.get('location') or 'N/A'}",
+                theme_text_color="Secondary",
+                font_size="12sp",
+                size_hint_y=None,
+                height="20dp"
+            ))
+            row.add_widget(MDLabel(
+                text=f"Application #{a.get('application_id')}",
+                theme_text_color="Secondary",
+                font_size="11sp",
+                size_hint_y=None,
+                height="18dp"
+            ))
+
+            select_btn = MDRaisedButton(
+                text="Select to Pay",
+                md_bg_color=(0.2, 0.6, 1, 1),
+                size_hint_x=1
+            )
+            select_btn.bind(on_release=lambda x, app=a: (self.dialog.dismiss(), on_pick(app)))
+            row.add_widget(select_btn)
+
+            layout.add_widget(row)
+
+            divider = MDBoxLayout(size_hint_y=None, height="1dp", md_bg_color=(1, 1, 1, 0.1))
+            layout.add_widget(divider)
+
+        scroll.add_widget(layout)
 
         self.dialog = MDDialog(
             title="Select truck owner to pay",
             type="custom",
-            content_cls=layout,
+            content_cls=scroll,
             buttons=[MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss())],
         )
         self.dialog.open()
+
 
     def _initiate_payment(self, application, method):
         app = MDApp.get_running_app()
@@ -1931,26 +1975,37 @@ class TruckOwnerHome(MDScreen):
         from kivymd.uix.button import MDFlatButton, MDRaisedButton
         from kivymd.uix.boxlayout import MDBoxLayout
 
-        layout = MDBoxLayout(
+        from kivy.uix.scrollview import ScrollView
+        from kivy.metrics import dp
+
+        content = MDBoxLayout(
             orientation="vertical",
             spacing="15dp",
             padding="10dp",
             size_hint_y=None
         )
-        layout.bind(minimum_height=layout.setter("height"))
+        content.bind(minimum_height=content.setter("height"))
 
         bank_code_input = MDTextField(hint_text="Bank Code (e.g. 058)")
         account_number_input = MDTextField(hint_text="Account Number")
         account_name_input = MDTextField(hint_text="Account Holder Name")
 
-        layout.add_widget(bank_code_input)
-        layout.add_widget(account_number_input)
-        layout.add_widget(account_name_input)
+        content.add_widget(bank_code_input)
+        content.add_widget(account_number_input)
+        content.add_widget(account_name_input)
+
+        scroll = ScrollView(
+            size_hint=(1, None),
+            height=dp(250)   # 👈 IMPORTANT: limits height for mobile
+        )
+        scroll.add_widget(content)
 
         self.dialog = MDDialog(
             title="Bank Details",
             type="custom",
-            content_cls=layout,
+            content_cls=scroll,   # 👈 USE SCROLL HERE
+            size_hint=(0.9, None),  # 👈 responsive width
+            height=dp(350),        # 👈 controlled height
             buttons=[
                 MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss()),
                 MDRaisedButton(
