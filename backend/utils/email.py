@@ -1,7 +1,27 @@
 import os
+import socket
 import smtplib
 from email.mime.text import MIMEText
 from typing import Optional
+
+
+class IPv4SMTP(smtplib.SMTP):
+    """
+    Render (and some other cloud hosts) fail to route outbound IPv6
+    connections, causing 'Network is unreachable' errors when smtplib
+    picks an IPv6 address for the SMTP server. This subclass forces the
+    underlying socket to use IPv4 only, while leaving hostname-based TLS
+    verification (starttls) untouched since self._host stays as the
+    original hostname.
+    """
+    def _get_socket(self, host, port, timeout):
+        addr_info = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        family, socktype, proto, canonname, sockaddr = addr_info[0]
+        sock = socket.socket(family, socktype, proto)
+        if timeout is not None:
+            sock.settimeout(timeout)
+        sock.connect(sockaddr)
+        return sock
 
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -36,7 +56,7 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
     msg["To"] = to_email
 
     try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+        with IPv4SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
