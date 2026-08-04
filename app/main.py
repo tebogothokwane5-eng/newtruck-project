@@ -1382,30 +1382,65 @@ class ContractorHome(MDScreen):
 
     def open_truck_pack(self, job, *args):
         applications = job.get("applications", [])
+        packs = [a for a in applications if a.get("truck_pack_url")]
 
-        pdf_url = None
-        for app in applications:
-            url = app.get("truck_pack_url")
-            if url:
-                pdf_url = url
-                break
-
-        if not pdf_url:
-            print("No truck pack found")
+        if not packs:
+            toast("No truck pack found")
             return
 
+        if len(packs) == 1:
+            self._open_pdf_url(packs[0]["truck_pack_url"])
+            return
+
+        self._pick_truck_pack_dialog(packs)
+
+    def _open_pdf_url(self, pdf_url):
         # Fix backend bug
         pdf_url = pdf_url.replace(
             "uploads/truck_packs/uploads/truck_packs/",
             "uploads/truck_packs/"
         )
-
         # Make full URL
         if not pdf_url.startswith("http"):
             pdf_url = f"{API_URL}/{pdf_url.lstrip('/')}"
-
         print("Opening:", pdf_url)
         webbrowser.open(pdf_url)
+
+    def _pick_truck_pack_dialog(self, packs):
+        """Show a list of truck packs for this job; tap one to open it."""
+        from kivymd.uix.boxlayout import MDBoxLayout
+        from kivymd.uix.button import MDFlatButton
+        from kivymd.uix.dialog import MDDialog
+
+        layout = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None)
+        layout.bind(minimum_height=layout.setter("height"))
+
+        for a in packs:
+            label = f"Application #{a.get('application_id')}"
+            location = a.get("location")
+            if location:
+                label += f" \u2014 {location}"
+
+            btn = MDFlatButton(
+                text=label,
+                size_hint_y=None,
+                height="40dp"
+            )
+            btn.bind(
+                on_release=lambda x, url=a["truck_pack_url"]: (
+                    self.dialog.dismiss(),
+                    self._open_pdf_url(url)
+                )
+            )
+            layout.add_widget(btn)
+
+        self.dialog = MDDialog(
+            title="Select a truck pack to view",
+            type="custom",
+            content_cls=layout,
+            buttons=[MDFlatButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss())],
+        )
+        self.dialog.open()
 
     def view_truck_pack_pdf(self, application_id):
         """Fetch truck pack PDF URL from backend and open in browser"""
