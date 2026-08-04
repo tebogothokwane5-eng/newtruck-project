@@ -249,6 +249,42 @@ def get_truck_owner_truck_packs(
     ]
 
 
+# ----------------- ALL TRUCK PACKS FOR A JOB -----------------
+@router.get("/{job_id}/truck-packs")
+def get_job_truck_packs(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    contractor_required(current_user)
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.contractor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not own this job")
+
+    applications = (
+        db.query(JobApplication)
+        .filter(JobApplication.job_id == job_id)
+        .filter(JobApplication.truck_pack.isnot(None))
+        .all()
+    )
+
+    result = []
+    for app in applications:
+        owner = db.query(User).filter(User.id == app.truck_owner_id).first()
+        result.append({
+            "application_id": app.id,
+            "truck_owner_id": app.truck_owner_id,
+            "truck_owner_username": owner.username if owner else "Unknown",
+            "truck_pack_url": truck_pack_url(app.truck_pack),
+            "status": app.status.value if hasattr(app.status, "value") else str(app.status),
+        })
+
+    return result
+
+
 # ----------------- MY APPLICATIONS -----------------
 @router.get("/my-applications")
 def my_applications(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
