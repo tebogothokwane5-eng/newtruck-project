@@ -1,6 +1,7 @@
 import os
 import time
 import shutil
+import traceback
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
 from fastapi.responses import FileResponse
@@ -215,25 +216,6 @@ def apply_with_truck_pack(
         "file_url": app_entry.truck_pack
     }
 
-    db.commit()
-    db.refresh(app_entry)
-
-    return {
-        "message": "Truck pack uploaded",
-        "application_id": app_entry.id,
-        "file_url": app_entry.truck_pack
-    }
-
-
-    db.commit()
-    db.refresh(app_entry)
-
-    return {
-        "message": "Truck pack uploaded",
-        "application_id": app_entry.id,
-        "file_url": truck_pack_url(filename)
-    }
-
 
 # ----------------- MY APPLICATIONS -----------------
 @router.get("/my-applications")
@@ -297,16 +279,6 @@ def upload_delivery_slip(
         "file_url": new_slip.file_path
     }
 
-
-    db.add(new_slip)
-    db.commit()
-    db.refresh(new_slip)
-
-    return {
-        "message": "Slip uploaded successfully",
-        "file_url": slip_url(filename)
-    }
-
 # ----------------- SLIPS -----------------
 @router.get("/applications/{application_id}/slips")
 def get_delivery_slips(
@@ -325,8 +297,7 @@ def get_delivery_slips(
             raise HTTPException(status_code=404, detail="Application not found")
 
         slips = db.query(DeliverySlip).filter(
-            DeliverySlip,
-    ApplicationStatus.application_id == application_id
+            DeliverySlip.application_id == application_id
         ).all()
 
         response = []
@@ -357,10 +328,15 @@ def get_delivery_slips(
         raise
 
     except Exception as e:
-        print("🔥 SLIPS ENDPOINT CRASH:", str(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-        raise HTTPException(status_code=500, detail="Internal server error")
+        print("🔥 SLIPS ENDPOINT CRASH:", repr(e))
+        print(traceback.format_exc())
+        # TEMPORARY: surfacing the real error in the response so it's visible
+        # directly in the client without needing to check server logs.
+        # Revert this to a generic "Internal server error" once the bug is found.
+        raise HTTPException(
+            status_code=500,
+            detail=f"DEBUG: {type(e).__name__}: {str(e)}"
+        )
 
 
 # ----------------- MONITORING -----------------
@@ -484,22 +460,6 @@ def get_job_applications(
     if not job or job.contractor_id != current_user.id:
         raise HTTPException(status_code=403, detail="You do not own this job")
 
-    applications = db.query(JobApplication).filter(JobApplication.job_id == job_id).all()
-
-    result = []
-    for a in applications:
-        truck_owner = db.query(User).filter(User.id == a.truck_owner_id).first()
-        result.append({
-            "application_id": a.id,
-            "truck_owner_id": a.truck_owner_id,
-            "truck_owner_username": truck_owner.username if truck_owner else "Unknown",
-            "status": a.status.value if hasattr(a.status, "value") else str(a.status),
-            "truck_pack_url": a.truck_pack,
-            "order_number": a.order_number,
-            "location": a.location
-        })
-
-    return result
     applications = db.query(JobApplication).filter(JobApplication.job_id == job_id).all()
 
     result = []
