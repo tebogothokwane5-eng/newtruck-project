@@ -6,7 +6,8 @@ import os
 import time
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
+import secrets
 
 import bcrypt
 from jose import jwt, JWTError
@@ -14,7 +15,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from backend.database import get_db
 from backend.models.user import User
-from backend.schemas import UserLogin, BankDetailsUpdate, PaypalEmailUpdate
+from backend.schemas import UserLogin, BankDetailsUpdate, PaypalEmailUpdate, ForgotPasswordRequest, ResetPasswordRequest
 from backend.utils.email import send_email
 from backend.utils.security import hash_password
 from backend.utils.storage import upload_file
@@ -168,6 +169,73 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
     except Exception as e:
         print("LOGIN ERROR:", e)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+# -------------------------
+# FORGOT PASSWORD (request reset code)
+# -------------------------
+@router.post("/forgot-password/")
+def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
+
+    generic_response = {
+        "message": "If that email is registered, a reset code has been sent."
+    }
+
+    if not user:
+        return generic_response
+
+    code = f"{secrets.randbelow(1000000):06d}"
+    user.reset_token = code
+    user.reset_token_expiry = datetime.now(timezone.utc) + timedelta(minutes=15)
+
+    db.commit()
+
+    try:
+        send_email(
+            to_email=user.email,
+            subject="Your Truckify password reset code",
+            body=(
+                f"Hi {user.username},\n\n"
+                f"Your password reset code is: {code}\n\n"
+                f"This code expires in 15 minutes. If you didn't request this, "
+                f"you can safely ignore this email.\n\n"
+                f"Regards,\nTruckify Team"
+            )
+        )
+    except Exception as e:
+        print("RESET EMAIL ERROR:", e)
+
+    return generic_response
+
+
+# -------------------------
+# RESET PASSWORD (verify code + set new password)
+# -------------------------
+@router.post("/reset-password/")
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
+
+    if not user or not user.reset_token or not user.reset_token_expiry:
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+    if user.reset_token != data.code:
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+    expiry = user.reset_token_expiry
+    if expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) > expiry:
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+    user.password = hash_password(data.new_password)
+    user.reset_token = None
+    user.reset_token_expiry = None
+
+    db.commit()
+
+    return {"message": "Password has been reset successfully"}
 
 
 # -------------------------

@@ -122,3 +122,15 @@ class JobStatusUpdate(BaseModel):
 class AssignOrderPayload(BaseModel):
     order_number: str
     location: str
+
+# -------------------------
+# PASSWORD RESET
+# -------------------------
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    code: str
+    new_password: str
