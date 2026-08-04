@@ -330,13 +330,7 @@ def get_delivery_slips(
     except Exception as e:
         print("🔥 SLIPS ENDPOINT CRASH:", repr(e))
         print(traceback.format_exc())
-        # TEMPORARY: surfacing the real error in the response so it's visible
-        # directly in the client without needing to check server logs.
-        # Revert this to a generic "Internal server error" once the bug is found.
-        raise HTTPException(
-            status_code=500,
-            detail=f"DEBUG: {type(e).__name__}: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ----------------- MONITORING -----------------
