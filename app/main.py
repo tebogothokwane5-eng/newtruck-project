@@ -53,6 +53,10 @@ ScreenManager:
         name: "login"
     RegisterScreen:
         name: "register"
+    ForgotPasswordScreen:
+        name: "forgot_password"
+    ResetPasswordScreen:
+        name: "reset_password"
     ContractorHome:
         name: "contractor_home"
     TruckOwnerHome:
@@ -130,7 +134,87 @@ ScreenManager:
                     text: "Create account"
                     pos_hint: {"center_x": .5}
                     on_release: app.root.current = "register"
+                MDTextButton:
+                    text: "Forgot Password?"
+                    pos_hint: {"center_x": .5}
+                    on_release: app.root.current = "forgot_password"
 
+
+# ---------------- FORGOT PASSWORD ----------------
+<ForgotPasswordScreen>:
+    MDBoxLayout:
+        orientation: "vertical"
+        MDTopAppBar:
+            title: "Forgot Password"
+            left_action_items: [["arrow-left", lambda x: app.root.__setattr__("current", "login")]]
+        ScrollView:
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: "20dp"
+                padding: "30dp"
+                size_hint_y: None
+                height: self.minimum_height
+                MDCard:
+                    orientation: "vertical"
+                    padding: "25dp"
+                    spacing: "20dp"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    radius: [20]
+                    MDLabel:
+                        text: "Enter your account email. We'll send you a 6-digit reset code."
+                        halign: "center"
+                    MDTextField:
+                        id: email
+                        hint_text: "Email"
+                        icon_right: "email"
+                    MDRaisedButton:
+                        text: "SEND CODE"
+                        pos_hint: {"center_x": .5}
+                        on_release: root.send_code()
+
+# ---------------- RESET PASSWORD ----------------
+<ResetPasswordScreen>:
+    MDBoxLayout:
+        orientation: "vertical"
+        MDTopAppBar:
+            title: "Reset Password"
+            left_action_items: [["arrow-left", lambda x: app.root.__setattr__("current", "login")]]
+        ScrollView:
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: "20dp"
+                padding: "30dp"
+                size_hint_y: None
+                height: self.minimum_height
+                MDCard:
+                    orientation: "vertical"
+                    padding: "25dp"
+                    spacing: "20dp"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    radius: [20]
+                    MDLabel:
+                        text: "Enter the code we emailed you and your new password."
+                        halign: "center"
+                    MDTextField:
+                        id: code
+                        hint_text: "6-digit code"
+                        icon_right: "numeric"
+                    MDTextField:
+                        id: new_password
+                        hint_text: "New password"
+                        password: True
+                        icon_right: "lock"
+                    MDTextField:
+                        id: confirm_password
+                        hint_text: "Confirm new password"
+                        password: True
+                        icon_right: "lock-check"
+                    MDRaisedButton:
+                        text: "RESET PASSWORD"
+                        pos_hint: {"center_x": .5}
+                        on_release: root.reset_password()
 
 # ---------------- REGISTER ----------------
 <RegisterScreen>:
@@ -492,6 +576,71 @@ from kivymd.uix.screen import MDScreen
 from kivymd.toast import toast
 from plyer import filechooser 
 import requests
+
+
+class ForgotPasswordScreen(MDScreen):
+    def send_code(self):
+        email = self.ids.email.text.strip()
+        if not email:
+            toast("Enter your email")
+            return
+        try:
+            res = requests.post(
+                f"{API_URL}/auth/forgot-password/",
+                json={"email": email},
+            )
+            print("FORGOT PASSWORD:", res.text)
+            if res.status_code != 200:
+                toast("Something went wrong, try again")
+                return
+            toast("If that email is registered, a code was sent")
+            reset_screen = self.manager.get_screen("reset_password")
+            reset_screen.email = email
+            self.manager.current = "reset_password"
+        except Exception as e:
+            print("FORGOT PASSWORD ERROR:", e)
+            toast("Server error")
+
+
+class ResetPasswordScreen(MDScreen):
+    email = ""
+
+    def reset_password(self):
+        code = self.ids.code.text.strip()
+        new_password = self.ids.new_password.text.strip()
+        confirm_password = self.ids.confirm_password.text.strip()
+
+        if not code or not new_password or not confirm_password:
+            toast("Fill all fields")
+            return
+
+        if new_password != confirm_password:
+            toast("Passwords do not match")
+            return
+
+        if not self.email:
+            toast("Missing email - go back and try again")
+            return
+
+        try:
+            res = requests.post(
+                f"{API_URL}/auth/reset-password/",
+                json={
+                    "email": self.email,
+                    "code": code,
+                    "new_password": new_password,
+                },
+            )
+            print("RESET PASSWORD:", res.text)
+            if res.status_code != 200:
+                data = res.json()
+                toast(data.get("detail", "Invalid or expired code"))
+                return
+            toast("Password reset successfully - please log in")
+            self.manager.current = "login"
+        except Exception as e:
+            print("RESET PASSWORD ERROR:", e)
+            toast("Server error")
 
 
 class RegisterScreen(MDScreen):
