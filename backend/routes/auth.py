@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse
 import os
+import re
 import time
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -28,6 +29,8 @@ from backend.auth_utils import (
 
 # ✅ SINGLE router (DO NOT redefine later)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
 
 UPLOAD_DOC_DIR = "uploads/documents"
 os.makedirs(UPLOAD_DOC_DIR, exist_ok=True)
@@ -63,6 +66,11 @@ def register(
 ):
     try:
         # 🔍 VALIDATIONS
+        email = email.strip().lower()
+
+        if not EMAIL_REGEX.match(email):
+            raise HTTPException(status_code=400, detail="Please enter a valid email address")
+
         if db.query(User).filter(User.username == username).first():
             raise HTTPException(status_code=400, detail="Username already taken")
 
@@ -176,7 +184,8 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
 # -------------------------
 @router.post("/forgot-password/")
 def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == data.email).first()
+    normalized_email = data.email.strip().lower()
+    user = db.query(User).filter(User.email == normalized_email).first()
 
     generic_response = {
         "message": "If that email is registered, a reset code has been sent."
@@ -214,7 +223,8 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
 # -------------------------
 @router.post("/reset-password/")
 def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == data.email).first()
+    normalized_email = data.email.strip().lower()
+    user = db.query(User).filter(User.email == normalized_email).first()
 
     if not user or not user.reset_token or not user.reset_token_expiry:
         raise HTTPException(status_code=400, detail="Invalid or expired code")
