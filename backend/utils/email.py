@@ -1,40 +1,17 @@
 import os
-import socket
-import smtplib
-from email.mime.text import MIMEText
+import requests
 from typing import Optional
 
-
-class IPv4SMTP(smtplib.SMTP):
-    """
-    Render (and some other cloud hosts) fail to route outbound IPv6
-    connections, causing 'Network is unreachable' errors when smtplib
-    picks an IPv6 address for the SMTP server. This subclass forces the
-    underlying socket to use IPv4 only, while leaving hostname-based TLS
-    verification (starttls) untouched since self._host stays as the
-    original hostname.
-    """
-    def _get_socket(self, host, port, timeout):
-        addr_info = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
-        family, socktype, proto, canonname, sockaddr = addr_info[0]
-        sock = socket.socket(family, socktype, proto)
-        if timeout is not None:
-            sock.settimeout(timeout)
-        sock.connect(sockaddr)
-        return sock
-
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASS = os.getenv("SMTP_PASS")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev")
+RESEND_API_URL = "https://api.resend.com/emails"
 
 
 # -----------------------------
 # VALIDATION (CRITICAL FOR PROD)
 # -----------------------------
-if not SMTP_USER or not SMTP_PASS:
-    print("WARNING: SMTP credentials not set in environment variables")
+if not RESEND_API_KEY:
+    print("WARNING: RESEND_API_KEY not set in environment variables")
 
 
 # -----------------------------
@@ -42,30 +19,37 @@ if not SMTP_USER or not SMTP_PASS:
 # -----------------------------
 def send_email(to_email: str, subject: str, body: str) -> bool:
     """
-    Sends email via SMTP.
+    Sends email via the Resend HTTP API (not raw SMTP - Render blocks
+    outbound SMTP ports on free-tier instances, so SMTP silently times out).
     Returns True if successful, False otherwise.
     """
 
-    if not SMTP_USER or not SMTP_PASS:
-        print("SMTP not configured")
+    if not RESEND_API_KEY:
+        print("Resend not configured")
         return False
 
-    msg = MIMEText(body, "plain", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = SMTP_USER
-    msg["To"] = to_email
-
     try:
-        with IPv4SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
+        response = requests.post(
+            RESEND_API_URL,
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": RESEND_FROM_EMAIL,
+                "to": to_email,
+                "subject": subject,
+                "text": body,
+            },
+            timeout=10,
+        )
 
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, [to_email], msg.as_string())
+        if response.status_code in (200, 201):
+            print(f"[EMAIL SENT] → {to_email}")
+            return True
 
-        print(f"[EMAIL SENT] → {to_email}")
-        return True
+        print(f"[EMAIL ERROR] {response.status_code}: {response.text}")
+        return False
 
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
