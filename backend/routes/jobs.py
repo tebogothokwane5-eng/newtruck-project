@@ -17,7 +17,9 @@ from backend.models.user import (
     JobStatus,
     JobApplication,
     DeliverySlip,
-    ApplicationStatus
+    ApplicationStatus,
+    JobComment,
+    JobLike
 )
 
 
@@ -399,6 +401,124 @@ def get_delivery_slips(
         print("🔥 SLIPS ENDPOINT CRASH:", repr(e))
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ----------------- JOB COMMENTS -----------------
+@router.get("/{job_id}/comments")
+def get_job_comments(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    comments = (
+        db.query(JobComment)
+        .filter(JobComment.job_id == job_id)
+        .order_by(JobComment.created_at.asc())
+        .all()
+    )
+
+    result = []
+    for c in comments:
+        author = db.query(User).filter(User.id == c.user_id).first()
+        result.append({
+            "id": c.id,
+            "job_id": c.job_id,
+            "user_id": c.user_id,
+            "username": author.username if author else "Unknown",
+            "role": getattr(author.role, "value", str(author.role)) if author else None,
+            "content": c.content,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        })
+
+    return result
+
+
+@router.post("/{job_id}/comments")
+def add_job_comment(
+    job_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    content_text = (payload.get("content") or "").strip()
+    if not content_text:
+        raise HTTPException(status_code=400, detail="Comment content is required")
+
+    comment = JobComment(
+        job_id=job_id,
+        user_id=current_user.id,
+        content=content_text
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+
+    return {
+        "id": comment.id,
+        "job_id": comment.job_id,
+        "user_id": comment.user_id,
+        "username": current_user.username,
+        "role": getattr(current_user.role, "value", str(current_user.role)),
+        "content": comment.content,
+        "created_at": comment.created_at.isoformat() if comment.created_at else None,
+    }
+
+
+# ----------------- JOB LIKES -----------------
+@router.get("/{job_id}/likes")
+def get_job_likes(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    count = db.query(JobLike).filter(JobLike.job_id == job_id).count()
+    liked_by_me = db.query(JobLike).filter(
+        JobLike.job_id == job_id,
+        JobLike.user_id == current_user.id
+    ).first() is not None
+
+    return {"job_id": job_id, "like_count": count, "liked_by_me": liked_by_me}
+
+
+@router.post("/{job_id}/likes/toggle")
+def toggle_job_like(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    existing = db.query(JobLike).filter(
+        JobLike.job_id == job_id,
+        JobLike.user_id == current_user.id
+    ).first()
+
+    if existing:
+        db.delete(existing)
+        db.commit()
+        liked = False
+    else:
+        db.add(JobLike(job_id=job_id, user_id=current_user.id))
+        db.commit()
+        liked = True
+
+    count = db.query(JobLike).filter(JobLike.job_id == job_id).count()
+
+    return {"job_id": job_id, "like_count": count, "liked_by_me": liked}
 
 
 # ----------------- MONITORING -----------------

@@ -57,6 +57,9 @@ class User(Base):
     document = Column(Text)
     is_active = Column(Boolean, default=False)
 
+    reset_token = Column(String(255), nullable=True)
+    reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
+
     # ---------------- RELATIONSHIPS ----------------
 
     jobs_created = relationship(
@@ -218,6 +221,37 @@ class DeliverySlip(Base):
         "JobApplication",
         back_populates="delivery_history"
     )
+
+
+# ---------------- JOB COMMENTS (Facebook-style) ----------------
+
+class JobComment(Base):
+    __tablename__ = "job_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    job = relationship("Job")
+    user = relationship("User")
+
+
+class JobLike(Base):
+    __tablename__ = "job_likes"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    job = relationship("Job")
+    user = relationship("User")
 
 
 # ---------------- FEEDBACK ----------------
