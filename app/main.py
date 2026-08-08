@@ -2640,6 +2640,40 @@ class TruckOwnerHome(MDScreen):
                 action_button("file-eye", "View", partial(self.show_slips_history, job["application_id"]))
             )
 
+        # ---------------- LIKE + COMMENTS ----------------
+        def dynamic_action(icon, initial_text):
+            box = MDBoxLayout(
+                orientation="vertical",
+                size_hint=(None, None),
+                size=("70dp", "70dp"),
+                spacing="2dp"
+            )
+            btn = MDIconButton(
+                icon=icon,
+                pos_hint={"center_x": 0.5},
+                theme_icon_color="Custom",
+                icon_color=(0.1, 0.5, 1, 1)
+            )
+            label = MDLabel(
+                text=initial_text,
+                halign="center",
+                font_style="Caption",
+                size_hint_y=None,
+                height="20dp"
+            )
+            box.add_widget(btn)
+            box.add_widget(label)
+            return box, btn, label
+
+        job_id_for_social = job.get("id")
+        like_box, like_icon, like_label = dynamic_action("thumb-up-outline", "Like")
+        comment_box, comment_icon, comment_label = dynamic_action("comment-outline", "Comments")
+        like_icon.bind(on_release=lambda inst, jid=job_id_for_social, lbl=like_label, icon=like_icon: self.toggle_like(jid, icon, lbl))
+        comment_icon.bind(on_release=lambda inst, jid=job_id_for_social, t=job.get("title", "Job"): self.open_comments(jid, t))
+        btn_layout.add_widget(like_box)
+        btn_layout.add_widget(comment_box)
+        self._fetch_job_social(job_id_for_social, like_icon, like_label, comment_label)
+
         # SCROLL WRAPPER (prevents squeezing on small phones)
         scroll = ScrollView(
             do_scroll_x=True,
@@ -2655,6 +2689,119 @@ class TruckOwnerHome(MDScreen):
         card.bind(on_release=partial(self.view_job_popup, job))
   
         self.ids.jobs_list.add_widget(card)
+
+    def _get_auth_headers(self):
+        app = MDApp.get_running_app()
+        token = getattr(app, "current_user", {}).get("token")
+        return {"Authorization": f"Bearer {token}"} if token else {}
+
+    def _fetch_job_social(self, job_id, like_icon, like_label, comment_label):
+        try:
+            r = requests.get(f"{API_URL}/jobs/{job_id}/likes", headers=self._get_auth_headers())
+            if r.status_code == 200:
+                data = r.json()
+                like_label.text = f"Like ({data.get('like_count', 0)})"
+                liked = data.get("liked_by_me", False)
+                like_icon.icon = "thumb-up" if liked else "thumb-up-outline"
+                like_icon.icon_color = (0.2, 0.6, 1, 1) if liked else (0.1, 0.5, 1, 1)
+        except Exception as e:
+            print("LIKE FETCH ERROR:", e)
+        try:
+            r = requests.get(f"{API_URL}/jobs/{job_id}/comments", headers=self._get_auth_headers())
+            if r.status_code == 200:
+                comment_label.text = f"Comments ({len(r.json())})"
+        except Exception as e:
+            print("COMMENT FETCH ERROR:", e)
+
+    def toggle_like(self, job_id, like_icon, like_label):
+        try:
+            r = requests.post(f"{API_URL}/jobs/{job_id}/likes/toggle", headers=self._get_auth_headers())
+            if r.status_code == 200:
+                data = r.json()
+                like_label.text = f"Like ({data.get('like_count', 0)})"
+                liked = data.get("liked_by_me", False)
+                like_icon.icon = "thumb-up" if liked else "thumb-up-outline"
+                like_icon.icon_color = (0.2, 0.6, 1, 1) if liked else (0.1, 0.5, 1, 1)
+            else:
+                toast("Failed to update like")
+        except Exception as e:
+            print("LIKE TOGGLE ERROR:", e)
+            toast("Server error")
+
+    def open_comments(self, job_id, job_title):
+        try:
+            r = requests.get(f"{API_URL}/jobs/{job_id}/comments", headers=self._get_auth_headers())
+            comments = r.json() if r.status_code == 200 else []
+        except Exception as e:
+            print("COMMENTS LOAD ERROR:", e)
+            comments = []
+            toast("Could not load comments")
+
+        from kivymd.uix.button import MDFlatButton
+        from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.textfield import MDTextField
+
+        scroll_c = ScrollView(size_hint=(1, None), height="300dp")
+        list_layout = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None, padding="5dp")
+        list_layout.bind(minimum_height=list_layout.setter("height"))
+
+        if not comments:
+            list_layout.add_widget(MDLabel(
+                text="No comments yet - be the first!",
+                theme_text_color="Secondary",
+                size_hint_y=None,
+                height="30dp"
+            ))
+        else:
+            for c in comments:
+                row = MDBoxLayout(orientation="vertical", size_hint_y=None, spacing="2dp")
+                row.bind(minimum_height=row.setter("height"))
+                header = f"{c.get('username', 'Unknown')} ({c.get('role', '')})"
+                row.add_widget(MDLabel(text=header, bold=True, font_size="13sp", size_hint_y=None, height="20dp"))
+                body_label = MDLabel(text=c.get("content", ""), size_hint_y=None)
+                body_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+                body_label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+                row.add_widget(body_label)
+                list_layout.add_widget(row)
+
+        scroll_c.add_widget(list_layout)
+
+        input_field = MDTextField(hint_text="Write a comment...", multiline=False)
+
+        container = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None)
+        container.bind(minimum_height=container.setter("height"))
+        container.add_widget(scroll_c)
+        container.add_widget(input_field)
+
+        def post_comment(*args):
+            text = input_field.text.strip()
+            if not text:
+                return
+            try:
+                r = requests.post(
+                    f"{API_URL}/jobs/{job_id}/comments",
+                    json={"content": text},
+                    headers=self._get_auth_headers()
+                )
+                if r.status_code == 200:
+                    self.dialog.dismiss()
+                    self.open_comments(job_id, job_title)
+                else:
+                    toast("Failed to post comment")
+            except Exception as e:
+                print("POST COMMENT ERROR:", e)
+                toast("Server error")
+
+        self.dialog = MDDialog(
+            title=f"Comments - {job_title}",
+            type="custom",
+            content_cls=container,
+            buttons=[
+                MDFlatButton(text="POST", on_release=post_comment),
+                MDFlatButton(text="CLOSE", on_release=lambda x: self.dialog.dismiss()),
+            ],
+        )
+        self.dialog.open()
     
     # -----------------------------
         # TRUCK PACK UPLOAD
