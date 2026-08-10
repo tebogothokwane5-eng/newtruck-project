@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models.user import User, Job, JobApplication, Feedback
+from backend.models.user import User, Job, JobApplication, Feedback, JobComment, JobLike
 from backend.models.payment import Payment
 from backend.routes.auth import get_current_user
 from backend.utils.email import send_email
@@ -189,6 +189,51 @@ def get_user_by_id(user_id: int, db: Session = Depends(get_db), current_user: Us
 @router.get("/users-debug")
 def users_debug(db: Session = Depends(get_db)):
     return [{"id": u.id, "username": u.username, "email": u.email, "is_active": u.is_active} for u in db.query(User).all()]
+
+# ---------------- ALL JOB COMMENTS ----------------
+@router.get("/all-comments")
+def get_all_comments(db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+    comments = db.query(JobComment).order_by(JobComment.created_at.desc()).all()
+
+    output = []
+    for c in comments:
+        job = db.query(Job).filter(Job.id == c.job_id).first()
+        author = db.query(User).filter(User.id == c.user_id).first()
+        output.append({
+            "id": c.id,
+            "job_id": c.job_id,
+            "job_title": job.title if job else "Unknown",
+            "username": author.username if author else "Unknown",
+            "role": getattr(author.role, "value", str(author.role)) if author else None,
+            "content": c.content,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        })
+
+    return output
+
+
+# ---------------- ALL JOB LIKES (SUMMARY PER JOB) ----------------
+@router.get("/all-likes")
+def get_all_likes(db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+    from sqlalchemy import func as sa_func
+
+    counts = (
+        db.query(JobLike.job_id, sa_func.count(JobLike.id).label("like_count"))
+        .group_by(JobLike.job_id)
+        .all()
+    )
+
+    output = []
+    for job_id, like_count in counts:
+        job = db.query(Job).filter(Job.id == job_id).first()
+        output.append({
+            "job_id": job_id,
+            "job_title": job.title if job else "Unknown",
+            "like_count": like_count,
+        })
+
+    return output
+
 
 # ---------------- PAYMENTS ----------------
 @router.get("/all-payments")
