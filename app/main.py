@@ -1949,6 +1949,7 @@ class ContractorHome(MDScreen):
             label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
             return label
 
+        
         card = MDCard(
             orientation="vertical",
             padding="14dp",
@@ -1958,9 +1959,13 @@ class ContractorHome(MDScreen):
             radius=[16],
             md_bg_color=(0.13, 0.13, 0.13, 1)
         )
+
+        # Let the card grow vertically with its content
         card.bind(minimum_height=card.setter("height"))
 
-        # ---- TITLE ----
+        # =========================================================
+        # TITLE
+        # =========================================================
         title_label = wrap_label(MDLabel(
             text=title,
             font_style="H6",
@@ -1969,25 +1974,27 @@ class ContractorHome(MDScreen):
         ))
         card.add_widget(title_label)
 
-        # ---- STATUS + APPLICANTS ROW ----
+         # =========================================================
+        # STATUS + APPLICANTS
+        # =========================================================
         status_row = MDBoxLayout(
             orientation="horizontal",
             size_hint=(1, None),
-            height="26dp",
+            height="28dp",
             spacing="8dp"
         )
 
         status_chip = MDLabel(
             text=display_status,
             size_hint=(None, None),
-            size=("80dp", "24dp"),
+            size=("85dp", "24dp"),
             halign="left",
+            valign="middle",
             theme_text_color="Custom",
             text_color=status_color,
             font_size="12sp",
             bold=True,
         )
-        status_row.add_widget(status_chip)
 
         applicants_label = MDLabel(
             text=f"{applicants}/{limit} Applicants",
@@ -1995,98 +2002,213 @@ class ContractorHome(MDScreen):
             font_size="12sp",
             size_hint=(1, None),
             height="24dp",
-            halign="right"
+            halign="right",
+            valign="middle"
         )
+
+        status_row.add_widget(status_chip)
         status_row.add_widget(applicants_label)
+
         card.add_widget(status_row)
 
-        # ---- DIVIDER ----
+        # =========================================================
+        # DIVIDER
+        # =========================================================
         card.add_widget(MDBoxLayout(
             size_hint=(1, None),
             height="1dp",
             md_bg_color=(1, 1, 1, 0.08)
         ))
 
-        # ---- DESCRIPTION ----
+        # =========================================================
+        # DESCRIPTION
+        # =========================================================
         desc_label = wrap_label(MDLabel(
-            text=description,
+             text=description,
             theme_text_color="Secondary",
             size_hint=(1, None),
         ))
+
         card.add_widget(desc_label)
 
-        # ---- ACTION ICONS (horizontally scrollable) ----
-        scroll = ScrollView(
+        # =========================================================
+        # ACTION ICONS - HORIZONTAL SCROLL
+        # =========================================================
+        action_scroll = ScrollView(
             do_scroll_x=True,
             do_scroll_y=False,
             size_hint=(1, None),
-            height="52dp",
-            bar_width="0dp"
+            height="58dp",
+            bar_width="0dp",
+            scroll_type=["content"]
         )
 
-        btn_row = MDBoxLayout(
+        action_row = MDBoxLayout(
             orientation="horizontal",
-            spacing="12dp",
+            spacing="18dp",
+            padding=("4dp", "4dp"),
             size_hint=(None, None),
-            height="48dp"
+            height="50dp"
         )
-        btn_row.bind(minimum_width=btn_row.setter("width"))
 
+        action_row.bind(minimum_width=action_row.setter("width"))
+
+        # ---- STATUS ----
         status_btn = MDIconButton(
             icon="lock-open-outline" if is_active else "lock",
             theme_icon_color="Custom",
             icon_color=status_color,
+            size_hint=(None, None),
+            size=("48dp", "48dp")
         )
-        status_btn.bind(on_release=lambda inst, j=job, s=status_val: self.toggle_job(j, s))
-        btn_row.add_widget(status_btn)
 
+        status_btn.bind(
+            on_release=lambda inst, j=job, s=status_val:
+            self.toggle_job(j, s)
+        )
+
+        action_row.add_widget(status_btn)
+
+        # ---- ASSIGN ORDER ----
         applications = job.get("applications", [])
+
         if applications:
             app_id = applications[0].get("application_id")
-            assign_icon = MDIconButton(icon="map-marker-plus")
-            assign_icon.bind(on_release=lambda inst, app_id=app_id: self.assign_order_popup(app_id))
-            btn_row.add_widget(assign_icon)
 
-        scroll.add_widget(btn_row)
-        card.add_widget(scroll)
+            assign_icon = MDIconButton(
+                icon="map-marker-plus",
+                theme_icon_color="Custom",
+                icon_color=(0.3, 0.7, 1, 1),
+                size_hint=(None, None),
+                size=("48dp", "48dp")
+            )
 
-        # ---- SOCIAL ROW (LIKE + COMMENTS) ----
+            assign_icon.bind(
+                on_release=lambda inst, app_id=app_id:
+                self.assign_order_popup(app_id)
+            )
+
+            action_row.add_widget(assign_icon)
+
+        action_scroll.add_widget(action_row)
+        card.add_widget(action_scroll)
+
+        # =========================================================
+        # SOCIAL ACTIONS - HORIZONTAL SCROLL
+        # =========================================================
+        social_scroll = ScrollView(
+            do_scroll_x=True,
+            do_scroll_y=False,
+            size_hint=(1, None),
+            height="52dp",
+            bar_width="0dp",
+            scroll_type=["content"]
+        )
+
         social_row = MDBoxLayout(
             orientation="horizontal",
-            spacing="16dp",
-            size_hint=(1, None),
-            height="36dp"
+            spacing="6dp",
+            padding=("4dp", "2dp"),
+            size_hint=(None, None),
+            height="48dp"
         )
+
+        social_row.bind(minimum_width=social_row.setter("width"))
+
+        # ---------------------------------------------------------
+        # LIKE
+        # ---------------------------------------------------------
         like_icon = MDIconButton(
             icon="thumb-up-outline",
             theme_icon_color="Custom",
-            icon_color=(1, 1, 1, 0.7)
+            icon_color=(1, 1, 1, 0.7),
+            size_hint=(None, None),
+            size=("44dp", "44dp")
         )
+
         like_count_label = MDLabel(
             text="0",
             theme_text_color="Secondary",
             size_hint=(None, None),
-            size=("30dp", "36dp")
+            size=("35dp", "44dp"),
+            halign="left",
+            valign="middle"
         )
-        comment_icon = MDIconButton(icon="comment-outline")
+ 
+        # ---------------------------------------------------------
+        # COMMENTS
+        # ---------------------------------------------------------
+        comment_icon = MDIconButton(
+            icon="comment-outline",
+            theme_icon_color="Custom",
+            icon_color=(1, 1, 1, 0.7),
+            size_hint=(None, None),
+            size=("44dp", "44dp")
+        )
+
         comment_count_label = MDLabel(
             text="0",
             theme_text_color="Secondary",
             size_hint=(None, None),
-            size=("30dp", "36dp")
+            size=("35dp", "44dp"),
+            halign="left",
+            valign="middle"
         )
+
         job_id_for_social = job.get("id")
-        like_icon.bind(on_release=lambda inst, jid=job_id_for_social, lbl=like_count_label, icon=like_icon: self.toggle_like(jid, icon, lbl))
-        comment_icon.bind(on_release=lambda inst, jid=job_id_for_social, t=title: self.open_comments(jid, t))
+
+        # ---------------------------------------------------------
+        # LIKE ACTION
+        # ---------------------------------------------------------
+        like_icon.bind(
+            on_release=lambda inst,
+            jid=job_id_for_social,
+            lbl=like_count_label,
+            icon=like_icon:
+            self.toggle_like(jid, icon, lbl)
+        )
+
+        # ---------------------------------------------------------
+        # COMMENT ACTION
+        # ---------------------------------------------------------
+        comment_icon.bind(
+            on_release=lambda inst,
+            jid=job_id_for_social,
+            t=title:
+            self.open_comments(jid, t)
+        )
+
         social_row.add_widget(like_icon)
         social_row.add_widget(like_count_label)
         social_row.add_widget(comment_icon)
         social_row.add_widget(comment_count_label)
-        card.add_widget(social_row)
-        self._fetch_job_social(job_id_for_social, like_icon, like_count_label, comment_count_label)
 
-        card.bind(on_release=partial(self._contractor_card_touch, job))
+        social_scroll.add_widget(social_row)
+        card.add_widget(social_scroll)
+
+        # =========================================================
+        # LOAD SOCIAL DATA
+        # =========================================================
+        self._fetch_job_social(
+            job_id_for_social,
+            like_icon,
+            like_count_label,
+            comment_count_label
+        )
+
+        # =========================================================
+        # CARD TOUCH
+        # =========================================================
+        card.bind(
+            on_release=partial(
+                self._contractor_card_touch,
+                job
+            )
+        )
+
         self.ids.jobs_list.add_widget(card)
+
+
 
     def _contractor_card_touch(self, job, *args):
         self.open_truck_pack(job)
@@ -2129,10 +2251,16 @@ class ContractorHome(MDScreen):
             print("LIKE TOGGLE ERROR:", e)
             toast("Server error")
 
+
     def open_comments(self, job_id, job_title):
         try:
-            r = requests.get(f"{API_URL}/jobs/{job_id}/comments", headers=self._get_auth_headers())
+            r = requests.get(
+                f"{API_URL}/jobs/{job_id}/comments",
+                headers=self._get_auth_headers()
+            )
+
             comments = r.json() if r.status_code == 200 else []
+
         except Exception as e:
             print("COMMENTS LOAD ERROR:", e)
             comments = []
@@ -2145,67 +2273,213 @@ class ContractorHome(MDScreen):
         from kivymd.uix.textfield import MDTextField
         from kivy.uix.scrollview import ScrollView
 
-        scroll = ScrollView(size_hint=(1, None), height="300dp")
-        list_layout = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None, padding="5dp")
-        list_layout.bind(minimum_height=list_layout.setter("height"))
+       # =========================================================
+        # COMMENT LIST
+        # =========================================================
+        list_layout = MDBoxLayout(
+            orientation="vertical",
+            spacing="10dp",
+            padding=("5dp", "5dp"),
+            size_hint_y=None
+        )
 
+        list_layout.bind(
+            minimum_height=list_layout.setter("height")
+        )
+
+        # =========================================================
+        # NO COMMENTS
+        # =========================================================
         if not comments:
-            list_layout.add_widget(MDLabel(
+
+            empty_label = MDLabel(
                 text="No comments yet - be the first!",
                 theme_text_color="Secondary",
+                halign="center",
+                valign="middle",
                 size_hint_y=None,
-                height="30dp"
-            ))
+                height="40dp"
+            )
+
+            list_layout.add_widget(empty_label)
+
+        # =========================================================
+        # COMMENTS
+        # =========================================================
         else:
+
             for c in comments:
-                row = MDBoxLayout(orientation="vertical", size_hint_y=None, spacing="2dp")
-                row.bind(minimum_height=row.setter("height"))
-                header = f"{c.get('username', 'Unknown')} ({c.get('role', '')})"
-                row.add_widget(MDLabel(text=header, bold=True, font_size="13sp", size_hint_y=None, height="20dp"))
-                body_label = MDLabel(text=c.get("content", ""), size_hint_y=None)
-                body_label.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
-                body_label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+
+                row = MDBoxLayout(
+                    orientation="vertical",
+                    spacing="3dp",
+                    padding=("4dp", "4dp"),
+                    size_hint_y=None
+                )
+
+                row.bind(
+                    minimum_height=row.setter("height")
+                )
+
+                # -------------------------------
+                # USER
+                # -------------------------------
+                header = MDLabel(
+                    text=f"{c.get('username', 'Unknown')} "
+                         f"({c.get('role', '')})",
+                    bold=True,
+                    font_size="13sp",
+                    theme_text_color="Custom",
+                    text_color=(0.3, 0.7, 1, 1),
+                    size_hint_y=None,
+                    height="22dp"
+                )
+
+                row.add_widget(header)
+
+                # -------------------------------
+                # COMMENT TEXT
+                # -------------------------------
+                body_label = MDLabel(
+                    text=c.get("content", ""),
+                    theme_text_color="Primary",
+                    size_hint_y=None,
+                    halign="left",
+                    valign="top"
+                )
+
+                # Make text wrap according to available width
+                body_label.bind(
+                    width=lambda inst, value:
+                    setattr(inst, "text_size", (value, None))
+                )
+
+                body_label.bind(
+                    texture_size=lambda inst, value:
+                    setattr(inst, "height", value[1])
+                )
+
                 row.add_widget(body_label)
+
                 list_layout.add_widget(row)
+
+        # =========================================================
+        # SCROLLABLE COMMENTS (reacts to window/screen size changes)
+        # =========================================================
+        from kivy.core.window import Window
+        from kivy.metrics import dp
+
+        def _calc_scroll_height():
+            return min(Window.height * 0.45, dp(320))
+
+        scroll = ScrollView(
+            size_hint=(1, None),
+            height=_calc_scroll_height(),
+            do_scroll_y=True,
+            do_scroll_x=False,
+            bar_width=dp(3)
+        )
+
+        def _on_window_resize(instance, value):
+            scroll.height = _calc_scroll_height()
+
+        Window.bind(size=_on_window_resize)
 
         scroll.add_widget(list_layout)
 
-        input_field = MDTextField(hint_text="Write a comment...", multiline=False)
+        # =========================================================
+        # COMMENT INPUT
+        # =========================================================
+        input_field = MDTextField(
+            hint_text="Write a comment...",
+            mode="rectangle",
+            multiline=False,
+            size_hint_y=None,
+            height="52dp"
+        )
 
-        container = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None)
-        container.bind(minimum_height=container.setter("height"))
+        # =========================================================
+        # MAIN DIALOG CONTENT
+        # =========================================================
+        container = MDBoxLayout(
+            orientation="vertical",
+            spacing="10dp",
+            padding=("4dp", "4dp"),
+            size_hint_y=None
+        )
+
+        container.bind(
+            minimum_height=container.setter("height")
+        )
+
         container.add_widget(scroll)
         container.add_widget(input_field)
 
+        # =========================================================
+        # POST COMMENT
+        # =========================================================
         def post_comment(*args):
+
             text = input_field.text.strip()
+
             if not text:
+                toast("Write a comment first")
                 return
+
             try:
+
                 r = requests.post(
                     f"{API_URL}/jobs/{job_id}/comments",
                     json={"content": text},
                     headers=self._get_auth_headers()
                 )
+
                 if r.status_code == 200:
+
                     self.dialog.dismiss()
-                    self.open_comments(job_id, job_title)
+
+                    # Reload comments
+                    self.open_comments(
+                        job_id,
+                        job_title
+                    )
+
                 else:
                     toast("Failed to post comment")
+
             except Exception as e:
+
                 print("POST COMMENT ERROR:", e)
                 toast("Server error")
 
+        # =========================================================
+        # DIALOG
+        # =========================================================
         self.dialog = MDDialog(
             title=f"Comments - {job_title}",
             type="custom",
             content_cls=container,
+            size_hint_x=0.92,
             buttons=[
-                MDFlatButton(text="POST", on_release=post_comment),
-                MDFlatButton(text="CLOSE", on_release=lambda x: self.dialog.dismiss()),
-            ],
+                MDFlatButton(
+                    text="POST",
+                    on_release=post_comment
+                ),
+
+                MDFlatButton(
+                    text="CLOSE",
+                    on_release=lambda x:
+                    self.dialog.dismiss()
+                )
+            ]
         )
+
+        def _cleanup_resize_binding(*args):
+            Window.unbind(size=_on_window_resize)
+
+        self.dialog.bind(on_dismiss=_cleanup_resize_binding)
         self.dialog.open()
+
 
     from kivy.clock import Clock
     from kivymd.toast import toast
