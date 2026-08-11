@@ -3015,7 +3015,19 @@ class TruckOwnerHome(MDScreen):
         from kivymd.uix.dialog import MDDialog
         from kivymd.uix.textfield import MDTextField
 
-        scroll_c = ScrollView(size_hint=(1, None), height="300dp")
+        from kivy.core.window import Window
+        from kivy.metrics import dp
+
+        def _calc_scroll_height():
+            return min(Window.height * 0.45, dp(320))
+
+        scroll_c = ScrollView(size_hint=(1, None), height=_calc_scroll_height())
+
+        def _on_window_resize(instance, value):
+            scroll_c.height = _calc_scroll_height()
+
+        Window.bind(size=_on_window_resize)
+
         list_layout = MDBoxLayout(orientation="vertical", spacing="10dp", size_hint_y=None, padding="5dp")
         list_layout.bind(minimum_height=list_layout.setter("height"))
 
@@ -3070,11 +3082,17 @@ class TruckOwnerHome(MDScreen):
             title=f"Comments - {job_title}",
             type="custom",
             content_cls=container,
+            size_hint_x=0.92,
             buttons=[
                 MDFlatButton(text="POST", on_release=post_comment),
                 MDFlatButton(text="CLOSE", on_release=lambda x: self.dialog.dismiss()),
             ],
         )
+
+        def _cleanup_resize_binding(*args):
+            Window.unbind(size=_on_window_resize)
+
+        self.dialog.bind(on_dismiss=_cleanup_resize_binding)
         self.dialog.open()
     
     # -----------------------------
