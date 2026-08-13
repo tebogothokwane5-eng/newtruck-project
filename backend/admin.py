@@ -204,6 +204,16 @@ def get_user_by_id(user_id: int, db: Session = Depends(get_db), current_user: Us
         "documents": documents
     }
 
+# ---------------- PUSH NOTIFICATION TEST ----------------
+@router.get("/test-push")
+def test_push(current_user: User = Depends(admin_required)):
+    from backend.utils.push import _get_firebase_app
+    app = _get_firebase_app()
+    if app:
+        return {"status": "ok", "message": "Firebase initialized successfully"}
+    return {"status": "error", "message": "Firebase failed to initialize - check server logs"}
+
+
 # ---------------- DEBUG ----------------
 @router.get("/users-debug")
 def users_debug(db: Session = Depends(get_db)):
