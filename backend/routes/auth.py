@@ -16,7 +16,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from backend.database import get_db
 from backend.models.user import User
-from backend.schemas import UserLogin, BankDetailsUpdate, PaypalEmailUpdate, ForgotPasswordRequest, ResetPasswordRequest
+from backend.schemas import UserLogin, BankDetailsUpdate, PaypalEmailUpdate, ForgotPasswordRequest, ResetPasswordRequest, RegisterDeviceTokenRequest
 from backend.utils.email import send_email
 from backend.utils.security import hash_password
 from backend.utils.storage import upload_file
@@ -288,6 +288,20 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+# -------------------------
+# REGISTER DEVICE TOKEN (for push notifications)
+# -------------------------
+@router.post("/register-device-token")
+def register_device_token(
+    data: RegisterDeviceTokenRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    current_user.fcm_token = data.token
+    db.commit()
+    return {"message": "Device token registered"}
+
 
 # -------------------------
 # BANK DETAILS

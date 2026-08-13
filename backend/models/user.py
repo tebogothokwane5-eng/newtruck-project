@@ -60,6 +60,8 @@ class User(Base):
     reset_token = Column(String(255), nullable=True)
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
 
+    fcm_token = Column(String(255), nullable=True)
+
     # ---------------- RELATIONSHIPS ----------------
 
     jobs_created = relationship(

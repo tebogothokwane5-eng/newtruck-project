@@ -10,6 +10,7 @@ from backend.models.user import User, Job, JobApplication, Feedback, JobComment,
 from backend.models.payment import Payment
 from backend.routes.auth import get_current_user
 from backend.utils.email import send_email
+from backend.utils.push import send_push_notification
 
 # ---------------- ROUTER ----------------
 router = APIRouter(prefix="/jobs/admin", tags=["admin"])
@@ -58,6 +59,15 @@ def approve_user(user_id: int, background_tasks: BackgroundTasks, db: Session = 
     body = f"Hello {user.username},\n\nGreat news! Your account has been approved. You can now log in to Truckify.\n\nRegards,\nTruckify Team"
     background_tasks.add_task(send_email, user.email, subject, body)
 
+    if user.fcm_token:
+        background_tasks.add_task(
+            send_push_notification,
+            user.fcm_token,
+            "Account approved",
+            "Your account has been approved - you can now log in to Truckify.",
+            {"type": "account_approved"}
+        )
+
     return {"detail": "User approved and notification sent"}
 
 @router.put("/users/{user_id}/reject")
@@ -73,6 +83,15 @@ def reject_user(user_id: int, background_tasks: BackgroundTasks, db: Session = D
     subject = "Your account application was not approved"
     body = f"Hello {user.username},\n\nWe regret to inform you that your account application has been rejected after review.\n\nRegards,\nTruckify Team"
     background_tasks.add_task(send_email, user.email, subject, body)
+
+    if user.fcm_token:
+        background_tasks.add_task(
+            send_push_notification,
+            user.fcm_token,
+            "Account application update",
+            "Your account application was not approved.",
+            {"type": "account_rejected"}
+        )
 
     return {"detail": "User rejected and notification sent"}
 

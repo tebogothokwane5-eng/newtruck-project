@@ -10,6 +10,7 @@ from backend.schemas import JobCreate, JobStatusUpdate, AssignOrderPayload
 from backend.database import get_db
 from backend.routes.auth import get_current_user
 from backend.utils.storage import upload_file
+from backend.utils.push import send_push_notification
 
 from backend.models.user import (
     User,
@@ -461,6 +462,36 @@ def add_job_comment(
     db.commit()
     db.refresh(comment)
 
+    # ---- PUSH NOTIFICATIONS ----
+    try:
+        commenter_role = getattr(current_user.role, "value", str(current_user.role))
+        if commenter_role == "main_contractor":
+            applicants = db.query(JobApplication).filter(JobApplication.job_id == job_id).all()
+            notified = set()
+            for app_entry in applicants:
+                if app_entry.truck_owner_id in notified:
+                    continue
+                notified.add(app_entry.truck_owner_id)
+                owner = db.query(User).filter(User.id == app_entry.truck_owner_id).first()
+                if owner and owner.fcm_token:
+                    send_push_notification(
+                        owner.fcm_token,
+                        title=f"New comment on {job.title}",
+                        body=f"{current_user.username}: {content_text[:80]}",
+                        data={"job_id": str(job_id), "type": "comment"}
+                    )
+        else:
+            contractor = db.query(User).filter(User.id == job.contractor_id).first()
+            if contractor and contractor.fcm_token:
+                send_push_notification(
+                    contractor.fcm_token,
+                    title=f"New comment on {job.title}",
+                    body=f"{current_user.username}: {content_text[:80]}",
+                    data={"job_id": str(job_id), "type": "comment"}
+                )
+    except Exception as e:
+        print("PUSH NOTIFICATION ERROR (comment):", e)
+
     return {
         "id": comment.id,
         "job_id": comment.job_id,
@@ -565,6 +596,19 @@ def assign_order(
 
     db.commit()
     db.refresh(app_entry)
+
+    # ---- PUSH NOTIFICATION ----
+    try:
+        owner = db.query(User).filter(User.id == app_entry.truck_owner_id).first()
+        if owner and owner.fcm_token:
+            send_push_notification(
+                owner.fcm_token,
+                title="Order assigned",
+                body=f"Order #{app_entry.order_number} assigned - location: {app_entry.location}",
+                data={"application_id": str(app_entry.id), "type": "order_assigned"}
+            )
+    except Exception as e:
+        print("PUSH NOTIFICATION ERROR (assign order):", e)
 
     return {
         "message": "Order assigned successfully",

@@ -134,3 +134,10 @@ class ResetPasswordRequest(BaseModel):
     email: str
     code: str
     new_password: str
+
+
+# -------------------------
+# PUSH NOTIFICATIONS
+# -------------------------
+class RegisterDeviceTokenRequest(BaseModel):
+    token: str
