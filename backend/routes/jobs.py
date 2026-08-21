@@ -11,6 +11,7 @@ from backend.database import get_db
 from backend.routes.auth import get_current_user
 from backend.utils.storage import upload_file
 from backend.utils.push import send_push_notification
+from backend.utils.email import notify_contractor_on_application, notify_truck_owner_on_accept
 
 from backend.models.user import (
     User,
