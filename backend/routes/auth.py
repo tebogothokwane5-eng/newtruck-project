@@ -263,13 +263,11 @@ def get_current_user(
     )
 
     try:
-        print("🔐 RAW TOKEN:", token)
 
         # ✅ safety cleanup
         token = token.strip()
 
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print("🔐 JWT PAYLOAD:", payload)
 
         username: str = payload.get("sub")
 
