@@ -1650,6 +1650,81 @@ class ContractorHome(MDScreen):
         except Exception as e:
             print("Applicants Error:", e)
 
+    # ---------------- VIEW / APPROVE APPLICATIONS ----------------
+    def view_applications_popup(self, job_id):
+        """Fetch applications for a job and show them in a dialog with Approve buttons."""
+        app = MDApp.get_running_app()
+        token = app.current_user["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        def handle_response(response, error=None):
+            def update_ui(dt):
+                if error or response is None or response.status_code != 200:
+                    toast("Could not load applications")
+                    return
+                applications = response.json()
+                self._show_applications_dialog(job_id, applications)
+            Clock.schedule_once(update_ui)
+
+        NetworkClient.get(f"{API_URL}/jobs/{job_id}/applications", headers=headers, callback=handle_response)
+
+    def _show_applications_dialog(self, job_id, applications):
+        from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.boxlayout import MDBoxLayout
+        from kivymd.uix.button import MDFlatButton, MDRaisedButton
+        from kivymd.uix.label import MDLabel
+
+        layout = MDBoxLayout(orientation="vertical", spacing="12dp", size_hint_y=None, padding="10dp")
+        layout.bind(minimum_height=layout.setter("height"))
+
+        if not applications:
+            layout.add_widget(MDLabel(text="No applications yet", size_hint_y=None, height="40dp"))
+        else:
+            for a in applications:
+                row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="48dp", spacing="10dp")
+                status = str(a.get("status", "")).lower()
+                label_text = f"{a.get('truck_owner_username', 'Unknown')} \u2014 {status.upper()}"
+                row.add_widget(MDLabel(text=label_text, size_hint_x=0.7))
+
+                if status == "pending":
+                    approve_btn = MDRaisedButton(text="APPROVE", size_hint_x=0.3)
+                    approve_btn.bind(
+                        on_release=lambda x, app_id=a.get("application_id"): self._approve_application(app_id, job_id)
+                    )
+                    row.add_widget(approve_btn)
+                else:
+                    row.add_widget(MDLabel(text="", size_hint_x=0.3))
+
+                layout.add_widget(row)
+
+        self.dialog = MDDialog(
+            title="Applications",
+            type="custom",
+            content_cls=layout,
+            buttons=[MDFlatButton(text="CLOSE", on_release=lambda x: self.dialog.dismiss())],
+        )
+        self.dialog.open()
+
+    def _approve_application(self, application_id, job_id):
+        app = MDApp.get_running_app()
+        token = app.current_user["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        try:
+            r = requests.patch(
+                f"{API_URL}/jobs/applications/{application_id}/approve",
+                headers=headers
+            )
+            if r.status_code == 200:
+                toast("Application approved")
+                self.dialog.dismiss()
+                self.view_applications_popup(job_id)
+            else:
+                toast(f"Error: {r.status_code}")
+        except Exception as e:
+            print("Approve error:", e)
+            toast("Server error")
+
     # ---------------- ASSIGN ORDER ----------------
     def assign_order_popup(self, application_id):
         from kivymd.uix.dialog import MDDialog
@@ -2089,6 +2164,19 @@ class ContractorHome(MDScreen):
             )
 
             action_row.add_widget(assign_icon)
+        # ---- VIEW APPLICATIONS ----
+        view_apps_icon = MDIconButton(
+            icon="account-multiple-outline",
+            theme_icon_color="Custom",
+            icon_color=(1, 0.7, 0.2, 1),
+            size_hint=(None, None),
+            size=("48dp", "48dp")
+        )
+        view_apps_icon.bind(
+            on_release=lambda inst, jid=job.get("id"):
+            self.view_applications_popup(jid)
+        )
+        action_row.add_widget(view_apps_icon)
 
         action_scroll.add_widget(action_row)
         card.add_widget(action_scroll)
