@@ -19,7 +19,7 @@ requirements = python3,kivy==2.3.1,kivymd==1.2.0,requests,plyer,pillow,filetype
 android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
 # (list) List of inclusions using pattern matching
 #source.include_patterns = assets/*,images/*.png
-android.api = 33
+android.api = 36
 # (list) Source files to exclude (let empty to not exclude anything)
 #source.exclude_exts = spec
 
@@ -105,7 +105,7 @@ fullscreen = 0
 #android.api = 31
 
 # (int) Minimum API your APK / AAB will support.
-#android.minapi = 21
+android.minapi = 21
 
 # (int) Android SDK version to use
 #android.sdk = 20
