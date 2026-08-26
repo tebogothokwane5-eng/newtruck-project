@@ -14,12 +14,15 @@ source.dir = .
 icon.filename = icon.png
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas
-requirements = python3,kivy==2.3.1,kivymd==1.2.0,requests,plyer,pillow,filetype
+requirements = python3,kivy==2.3.1,kivymd==1.2.0,requests,plyer,pillow,filetype,jnius,https://github.com/MichaelStott/KivMob/archive/refs/heads/master.zip
 
-android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,ACCESS_NETWORK_STATE
 # (list) List of inclusions using pattern matching
 #source.include_patterns = assets/*,images/*.png
 android.api = 36
+android.enable_androidx = True
+android.gradle_dependencies = com.google.android.gms:play-services-ads:22.6.0
+android.meta_data = com.google.android.gms.ads.APPLICATION_ID=ca-app-pub-3940256099942544~3347511713
 # (list) Source files to exclude (let empty to not exclude anything)
 #source.exclude_exts = spec
 

@@ -3610,11 +3610,22 @@ class MyApp(MDApp):
         self.theme_cls.primary_palette = "LightBlue"
         self.theme_cls.theme_style = "Dark"
         return Builder.load_string(KV)
+    def init_ads(self):
+        try:
+            from kivmob import KivMob, TestIds
+            self.ads = KivMob(TestIds.APP)
+            self.ads.new_banner(TestIds.BANNER, top_pos=False)
+            self.ads.request_banner()
+            self.ads.show_banner()
+        except Exception as e:
+            print("AD INIT ERROR:", e)
+
 
     def on_start(self):
         print("APP STARTED")
 
         self.root.current = "splash"  # ALWAYS start safe screen
+        Clock.schedule_once(lambda dt: self.init_ads(), 2)
 
         if store.exists("auth"):
             data = store.get("auth")
