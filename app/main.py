@@ -2659,9 +2659,15 @@ import requests
 
 
 class TruckOwnerHome(MDScreen):
+    _seen_orders = {}
 
     def on_pre_enter(self, *args):
         Clock.schedule_once(self.load_jobs, 0.2)
+        self.job_refresh_event = Clock.schedule_interval(lambda dt: self.load_jobs(), 30)
+
+    def on_leave(self, *args):
+        if hasattr(self, "job_refresh_event"):
+            self.job_refresh_event.cancel()
 
     # -----------------------------
     # BANK DETAILS
@@ -2819,6 +2825,12 @@ class TruckOwnerHome(MDScreen):
                 job["description"] = job.get("description") or "No description"
                 job["location"] = job.get("location") or "N/A"
                 job["order_number"] = job.get("order_number") or "N/A"
+                order_num = job["order_number"]
+                job_id_key = job.get("id")
+                previous_order = self._seen_orders.get(job_id_key)
+                if order_num != "N/A" and previous_order != order_num:
+                    toast(f"Order assigned: {order_num} for {job.get('title', 'a job')}")
+                self._seen_orders[job_id_key] = order_num
                 job["status"] = (job.get("status") or "pending").lower()
                 job["applicant_count"] = job.get("applicant_count") or 0
                 job["target_limit"] = job.get("target_limit") or 0
