@@ -3271,13 +3271,28 @@ class TruckOwnerHome(MDScreen):
     # JOB POPUP
     # -----------------------------
     def view_job_popup(self, job, *args):
-        layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        layout = MDBoxLayout(orientation="vertical", spacing="10dp", padding="10dp", size_hint_y=None)
+        layout.bind(minimum_height=layout.setter("height"))
 
-        layout.add_widget(MDLabel(text=f"Title: {job.get('title')}"))
-        layout.add_widget(MDLabel(text=f"Description: {job.get('description')}"))
-        layout.add_widget(MDLabel(text=f"Order #: {job.get('order_number')}"))
-        layout.add_widget(MDLabel(text=f"Location: {job.get('location')}"))
-        layout.add_widget(MDLabel(text=f"Created: {job.get('created_at')}"))
+        def wrapped_label(text):
+            lbl = MDLabel(text=text, size_hint_y=None)
+            lbl.bind(width=lambda inst, val: setattr(inst, "text_size", (val, None)))
+            lbl.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+            return lbl
+
+        layout.add_widget(wrapped_label(f"Title: {job.get('title')}"))
+        layout.add_widget(wrapped_label(f"Description: {job.get('description')}"))
+        layout.add_widget(wrapped_label(f"Order #: {job.get('order_number')}"))
+        layout.add_widget(wrapped_label(f"Location: {job.get('location')}"))
+        location_text = job.get("location") or ""
+        if location_text and location_text != "N/A":
+            maps_btn = MDFlatButton(
+                text="OPEN IN MAPS",
+                on_release=lambda x, loc=location_text: self.open_location_in_maps(loc)
+            )
+            layout.add_widget(maps_btn)
+        layout.add_widget(wrapped_label(f"Created: {job.get('created_at')}"))
+
 
         self.dialog = MDDialog(
             title="Job Details",
@@ -3286,6 +3301,13 @@ class TruckOwnerHome(MDScreen):
             buttons=[MDFlatButton(text="CLOSE", on_release=lambda x: self.dialog.dismiss())]
         )
         self.dialog.open()
+
+    def open_location_in_maps(self, location_text):
+        import webbrowser
+        import urllib.parse
+        query = urllib.parse.quote(location_text)
+        url = f"https://www.google.com/maps/search/?api=1&query={query}"
+        webbrowser.open(url)
     
     def show_slips_history(self, application_id, *args):
         from app.utils.network import NetworkClient
