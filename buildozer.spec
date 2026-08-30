@@ -14,7 +14,7 @@ source.dir = .
 icon.filename = icon.png
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas
-requirements = python3,kivy==2.3.1,kivymd==1.2.0,requests,plyer,pillow,filetype,jnius,https://github.com/MichaelStott/KivMob/archive/refs/heads/master.zip
+requirements = python3==3.11.6,hostpython3==3.11.6,kivy==2.3.1,kivymd==1.2.0,requests,plyer,pillow,filetype,pyjnius
 
 android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,ACCESS_NETWORK_STATE
 # (list) List of inclusions using pattern matching
