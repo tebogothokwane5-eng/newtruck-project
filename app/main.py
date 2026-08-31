@@ -32,7 +32,13 @@ import os
 from kivy.storage.jsonstore import JsonStore
 
 # Initialize permanent storage for tokens
-store = JsonStore('user_session.json')
+from kivy.utils import platform
+if platform == "android":
+    from android.storage import app_storage_path
+    _store_path = os.path.join(app_storage_path(), 'user_session.json')
+else:
+    _store_path = 'user_session.json'
+store = JsonStore(_store_path)
 
 
 def get_token():
