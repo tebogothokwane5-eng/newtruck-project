@@ -2669,7 +2669,7 @@ class TruckOwnerHome(MDScreen):
 
     def on_pre_enter(self, *args):
         Clock.schedule_once(self.load_jobs, 0.2)
-        self.job_refresh_event = Clock.schedule_interval(lambda dt: self.load_jobs(), 30)
+        self.job_refresh_event = Clock.schedule_interval(lambda dt: self.load_jobs(), 1200)
 
     def on_leave(self, *args):
         if hasattr(self, "job_refresh_event"):

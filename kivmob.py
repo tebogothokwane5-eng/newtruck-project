@@ -24,11 +24,6 @@ if platform == 'android':
         LayoutParams = autoclass('android.view.ViewGroup$LayoutParams')
         LinearLayout = autoclass('android.widget.LinearLayout')
         MobileAds = autoclass('com.google.android.gms.ads.MobileAds')
-        RewardItem = autoclass('com.google.android.gms.ads.reward.RewardItem')
-        RewardedVideoAd = autoclass(
-            'com.google.android.gms.ads.reward.RewardedVideoAd')
-        RewardedVideoAdListener = autoclass(
-            'com.google.android.gms.ads.reward.RewardedVideoAdListener')
         View = autoclass('android.view.View')
 
         class AdMobRewardedVideoAdListener(PythonJavaClass):
