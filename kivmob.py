@@ -77,7 +77,10 @@ if platform == 'android':
             def onRewardedVideoCompleted(self):
                 Logger.info('KivMob: onRewardedVideoCompleted() called.')
                 self._listener.on_rewarded_video_ad_completed()
-    except BaseException:
+    except BaseException as _kivmob_exc:
+        import traceback
+        Logger.error("KivMob: REAL EXCEPTION: " + repr(_kivmob_exc))
+        traceback.print_exc()
         Logger.error(
             'KivMob: Cannot load AdMob classes. Check buildozer.spec.')
 else:
