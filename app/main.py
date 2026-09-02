@@ -3651,6 +3651,8 @@ class MyApp(MDApp):
 
     def on_start(self):
         print("APP STARTED")
+        if store.exists("auth"):
+            store.delete("auth")
 
         self.root.current = "splash"  # ALWAYS start safe screen
         Clock.schedule_once(lambda dt: self.init_ads(), 2)
