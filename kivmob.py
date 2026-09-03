@@ -20,7 +20,6 @@ if platform == 'android':
         AdView = autoclass('com.google.android.gms.ads.AdView')
         Bundle = autoclass('android.os.Bundle')
         Gravity = autoclass('android.view.Gravity')
-        InterstitialAd = autoclass('com.google.android.gms.ads.InterstitialAd')
         LayoutParams = autoclass('android.view.ViewGroup$LayoutParams')
         LinearLayout = autoclass('android.widget.LinearLayout')
         MobileAds = autoclass('com.google.android.gms.ads.MobileAds')
