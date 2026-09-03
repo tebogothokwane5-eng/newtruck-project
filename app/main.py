@@ -41,6 +41,83 @@ else:
 store = JsonStore(_store_path)
 
 
+def pick_document(callback):
+    """
+    Cross-platform document picker.
+    On Android, resolves content:// URIs to a real local file by reading
+    bytes via ContentResolver, since plyer's legacy _data-column lookup
+    fails on modern Android (Scoped Storage). Calls callback(path_or_none).
+    """
+    if platform != "android":
+        filechooser.open_file(on_selection=lambda sel: callback(sel[0] if sel else None))
+        return
+
+    import random
+    import os
+    from jnius import autoclass
+    from android import activity, mActivity
+    from android.storage import app_storage_path
+
+    Intent = autoclass("android.content.Intent")
+    Activity = autoclass("android.app.Activity")
+
+    request_code = random.randint(100000, 999999)
+
+    def on_result(request_code_recv, result_code, data):
+        if request_code_recv != request_code:
+            return
+        activity.unbind(on_activity_result=on_result)
+        if result_code != Activity.RESULT_OK or data is None:
+            callback(None)
+            return
+        uri = data.getData()
+        if uri is None:
+            callback(None)
+            return
+        try:
+            resolver = mActivity.getContentResolver()
+
+            filename = f"upload_{random.randint(10000, 99999)}"
+            try:
+                cursor = resolver.query(uri, None, None, None, None)
+                if cursor and cursor.moveToFirst():
+                    name_idx = cursor.getColumnIndex("_display_name")
+                    if name_idx != -1:
+                        filename = cursor.getString(name_idx)
+                if cursor:
+                    cursor.close()
+            except Exception:
+                pass
+
+            dest_dir = os.path.join(app_storage_path(), "uploads_cache")
+            os.makedirs(dest_dir, exist_ok=True)
+            dest_path = os.path.join(dest_dir, filename)
+
+            input_stream = resolver.openInputStream(uri)
+            JavaByteArray = autoclass("[B")
+            buf = JavaByteArray(4096)
+            with open(dest_path, "wb") as out_f:
+                while True:
+                    n = input_stream.read(buf)
+                    if n == -1:
+                        break
+                    out_f.write(bytes(buf[:n]))
+            input_stream.close()
+
+            callback(dest_path)
+        except Exception as e:
+            print("FILE RESOLVE ERROR:", e)
+            callback(None)
+
+    activity.bind(on_activity_result=on_result)
+
+    intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+    intent.addCategory(Intent.CATEGORY_OPENABLE)
+    intent.setType("*/*")
+    mActivity.startActivityForResult(intent, request_code)
+
+
+
 def get_token():
     if store.exists("auth"):
         return store.get("auth").get("token")
@@ -674,15 +751,13 @@ class RegisterScreen(MDScreen):
     # ---------------- FILE PICKER ----------------
 
     def open_file_chooser(self):
-        def select_file(selection):
-            if not selection or not selection[0]:
+        def select_file(path):
+            if not path:
                 toast("No file selected")
                 return
-
-            self.selected_file = selection[0]
+            self.selected_file = path
             self.ids.doc_label.text = self.selected_file.split("/")[-1]
-
-        filechooser.open_file(on_selection=select_file)
+        pick_document(select_file)
 
     # ---------------- REGISTER ----------------
 
@@ -3206,9 +3281,7 @@ class TruckOwnerHome(MDScreen):
         # TRUCK PACK UPLOAD
     # -----------------------------
     def choose_truck_pack(self, job, *args):
-        filechooser.open_file(
-            on_selection=lambda sel: self.upload_truck_pack(job, sel)
-        )
+        pick_document(lambda path: self.upload_truck_pack(job, [path] if path else None))
 
     def upload_truck_pack(self, job, selection):
         from app.utils.network import NetworkClient
@@ -3242,9 +3315,7 @@ class TruckOwnerHome(MDScreen):
     # SLIP UPLOAD
     # -----------------------------
     def choose_slip_file(self, application_id, *args):
-        filechooser.open_file(
-            on_selection=lambda sel: self.upload_slip(application_id, sel)
-        )
+        pick_document(lambda path: self.upload_slip(application_id, [path] if path else None))
 
     def upload_slip(self, application_id, selection):
         from kivymd.app import MDApp
