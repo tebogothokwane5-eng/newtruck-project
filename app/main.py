@@ -675,7 +675,8 @@ class RegisterScreen(MDScreen):
 
     def open_file_chooser(self):
         def select_file(selection):
-            if not selection:
+            if not selection or not selection[0]:
+                toast("No file selected")
                 return
 
             self.selected_file = selection[0]
@@ -3212,7 +3213,7 @@ class TruckOwnerHome(MDScreen):
     def upload_truck_pack(self, job, selection):
         from app.utils.network import NetworkClient
 
-        if not selection:
+        if not selection or not selection[0]:
             toast("No file selected")
             return
 
@@ -3250,7 +3251,7 @@ class TruckOwnerHome(MDScreen):
         from app.utils.network import NetworkClient
         from kivymd.toast import toast
 
-        if not selection:
+        if not selection or not selection[0]:
             toast("No file selected")
             return
 
@@ -3651,6 +3652,14 @@ class MyApp(MDApp):
 
     def on_start(self):
         print("APP STARTED")
+        if platform == "android":
+            try:
+                request_permissions([
+                    Permission.READ_EXTERNAL_STORAGE,
+                    Permission.WRITE_EXTERNAL_STORAGE,
+                ])
+            except Exception as e:
+                print("PERMISSION REQUEST ERROR:", e)
         if store.exists("auth"):
             store.delete("auth")
 
