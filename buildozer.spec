@@ -27,7 +27,7 @@ android.meta_data = com.google.android.gms.ads.APPLICATION_ID=ca-app-pub-3940256
 #source.exclude_exts = spec
 
 # (list) List of directory to exclude (let empty to not exclude anything)
-#source.exclude_dirs = tests, bin, venv
+source.exclude_dirs = tests, bin, venv, venv310, .buildozer, .git
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
