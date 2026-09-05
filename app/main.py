@@ -94,8 +94,7 @@ def pick_document(callback):
             dest_path = os.path.join(dest_dir, filename)
 
             input_stream = resolver.openInputStream(uri)
-            JavaByteArray = autoclass("[B")
-            buf = JavaByteArray(4096)
+            buf = bytearray(4096)
             with open(dest_path, "wb") as out_f:
                 while True:
                     n = input_stream.read(buf)

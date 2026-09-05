@@ -184,9 +184,6 @@ class AndroidBridge(AdMobBridge):
         self._loaded = False
         MobileAds.initialize(activity.mActivity, appID)
         self._adview = AdView(activity.mActivity)
-        self._interstitial = InterstitialAd(activity.mActivity)
-        self._rewarded = MobileAds.getRewardedVideoAdInstance(
-            activity.mActivity)
         self._test_devices = []
 
     @run_on_ui_thread
