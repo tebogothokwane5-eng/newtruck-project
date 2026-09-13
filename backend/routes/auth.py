@@ -301,6 +301,16 @@ def register_device_token(
     return {"message": "Device token registered"}
 
 
+@router.post("/ping")
+def ping(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    current_user.last_seen = datetime.now(timezone.utc)
+    db.commit()
+    return {"status": "ok"}
+
+
 # -------------------------
 # BANK DETAILS
 # -------------------------

@@ -61,6 +61,7 @@ class User(Base):
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
 
     fcm_token = Column(String(255), nullable=True)
+    last_seen = Column(DateTime(timezone=True), nullable=True)
 
     # ---------------- RELATIONSHIPS ----------------
 

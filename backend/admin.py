@@ -29,17 +29,27 @@ def admin_required(current_user: User = Depends(get_current_user)):
 # ---------------- USERS ----------------
 @router.get("/all-users")
 def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+    from datetime import datetime, timezone, timedelta
     users = db.query(User).all()
-    return [
-        {
+    online_threshold = datetime.now(timezone.utc) - timedelta(minutes=5)
+    result = []
+    for u in users:
+        last_seen = u.last_seen
+        is_online = False
+        if last_seen:
+            if last_seen.tzinfo is None:
+                last_seen = last_seen.replace(tzinfo=timezone.utc)
+            is_online = last_seen >= online_threshold
+        result.append({
             "id": u.id,
             "username": u.username,
             "email": u.email,
             "role": getattr(u.role, "value", str(u.role)),
-            "is_active": u.is_active
-        }
-        for u in users
-    ]
+            "is_active": u.is_active,
+            "last_seen": last_seen.isoformat() if last_seen else None,
+            "is_online": is_online
+        })
+    return result
 
 @router.get("/users")
 def get_all_users_alias(db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
