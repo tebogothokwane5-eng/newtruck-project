@@ -98,7 +98,7 @@ h1, h2 { color: #0d47a1; }
 <p>We use industry-standard measures, including encrypted password storage and secure payment processing, to protect your information.</p>
 
 <h2>Contact Us</h2>
-<p>For any privacy-related questions or requests, contact us through the app or via the support channels listed on our AppGallery/Play Store listing.</p>
+<p>For any privacy-related questions or requests, contact us at tebogothokwane5@gmail.com.</p>
 
 </body>
 </html>
@@ -134,7 +134,7 @@ h1, h2 { color: #0d47a1; }
 <p>Where we rely on your consent to process data (such as push notifications), you may withdraw this consent at any time through your device or app settings.</p>
 
 <h2>How to Exercise Your Rights</h2>
-<p>To exercise any of these rights, please contact us through the app or via the support contact listed on our store listing page, including your username and a description of your request.</p>
+<p>To exercise any of these rights, please email us at tebogothokwane5@gmail.com with your username and a description of your request.</p>
 
 </body>
 </html>
