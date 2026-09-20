@@ -159,6 +159,7 @@ def delete_application(application_id: int, db: Session = Depends(get_db), curre
         raise HTTPException(status_code=404, detail="Application not found")
     try:
         db.query(DeliverySlip).filter(DeliverySlip.application_id == application_id).delete()
+        db.query(Payment).filter(Payment.application_id == application_id).delete()
         db.delete(application)
         db.commit()
         return {"detail": "Application and related data deleted"}
