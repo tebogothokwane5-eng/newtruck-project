@@ -31,7 +31,7 @@ def admin_required(current_user: User = Depends(get_current_user)):
 def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
     from datetime import datetime, timezone, timedelta
     users = db.query(User).all()
-    online_threshold = datetime.now(timezone.utc) - timedelta(minutes=5)
+    online_threshold = datetime.now(timezone.utc) - timedelta(seconds=90)
     result = []
     for u in users:
         last_seen = u.last_seen
