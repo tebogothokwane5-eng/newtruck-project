@@ -228,14 +228,13 @@ def get_all_applications(db: Session = Depends(get_db), current_user: User = Dep
     applications = db.query(JobApplication).all()
     result = []
     for app in applications:
-        filename = os.path.basename(app.truck_pack) if app.truck_pack else None
         result.append({
             "application_id": app.id,
             "job_id": app.job_id,
             "truck_owner_id": app.truck_owner_id,
             "status": app.status,
             "truck_pack": app.truck_pack,
-            "truck_pack_url": f"{BASE_URL}/jobs/admin/uploads/truck_packs/{filename}" if filename else None
+            "truck_pack_url": app.truck_pack if app.truck_pack else None
         })
     return result
 
