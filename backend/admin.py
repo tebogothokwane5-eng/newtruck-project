@@ -120,12 +120,35 @@ def evaluate_user(user_id: int, background_tasks: BackgroundTasks, db: Session =
 
 @router.delete("/users/{user_id}/delete")
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+    from backend.models.user import JobComment, JobLike, Feedback
+    from backend.models.payment import Payment
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user)
-    db.commit()
-    return {"detail": "User deleted"}
+
+    try:
+        db.query(JobComment).filter(JobComment.user_id == user_id).delete()
+        db.query(JobLike).filter(JobLike.user_id == user_id).delete()
+        db.query(Feedback).filter(
+            (Feedback.truck_owner_id == user_id) | (Feedback.contractor_id == user_id)
+        ).delete(synchronize_session=False)
+        db.query(Payment).filter(
+            (Payment.contractor_id == user_id) | (Payment.truck_owner_id == user_id)
+        ).delete(synchronize_session=False)
+
+        db.delete(user)
+        db.commit()
+        return {"detail": "User deleted"}
+
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete user: they have related records that could not be removed ({str(e)})"
+        )
 
 # ---------------- JOBS ----------------
 @router.get("/all-jobs")
