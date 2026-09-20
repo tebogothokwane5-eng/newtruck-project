@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models.user import User, Job, JobApplication, Feedback, JobComment, JobLike
+from backend.models.user import User, Job, JobApplication, Feedback, JobComment, JobLike, DeliverySlip
 from backend.models.payment import Payment
 from backend.routes.auth import get_current_user
 from backend.utils.email import send_email
@@ -149,6 +149,60 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
             status_code=400,
             detail=f"Cannot delete user: they have related records that could not be removed ({str(e)})"
         )
+
+# ---------------- APPLICATION / SLIP / TRUCK PACK DELETION ----------------
+
+@router.delete("/applications/{application_id}/delete")
+def delete_application(application_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+    application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    try:
+        db.query(DeliverySlip).filter(DeliverySlip.application_id == application_id).delete()
+        db.delete(application)
+        db.commit()
+        return {"detail": "Application and related data deleted"}
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"Cannot delete application: {str(e)}")
+
+
+@router.delete("/applications/{application_id}/slips/{slip_id}/delete")
+def delete_slip(application_id: int, slip_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+    slip = db.query(DeliverySlip).filter(
+        DeliverySlip.id == slip_id,
+        DeliverySlip.application_id == application_id
+    ).first()
+    if not slip:
+        raise HTTPException(status_code=404, detail="Slip not found")
+    try:
+        db.delete(slip)
+        db.commit()
+        return {"detail": "Slip deleted"}
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"Cannot delete slip: {str(e)}")
+
+
+@router.delete("/applications/{application_id}/truck-pack/delete")
+def delete_truck_pack(application_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
+    application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    try:
+        application.truck_pack = None
+        db.commit()
+        return {"detail": "Truck pack deleted"}
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"Cannot delete truck pack: {str(e)}")
+
 
 # ---------------- JOBS ----------------
 @router.get("/all-jobs")
